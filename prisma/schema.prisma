@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  status    Status   @default(PENDING)
+  team      Team?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Team {
+  id          String       @id @default(cuid())
+  teamName    String
+  projectName String
+  category    String
+  members     String
+  userId      String       @unique
+  user        User         @relation(fields: [userId], references: [id])
+  submissions Submission[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Submission {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  publicLink  String
+  teamId      String
+  team        Team     @relation(fields: [teamId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum Role {
+  ADMIN
+  TEAM
+  TEACHER
+}
+
+enum Status {
+  PENDING
+  ACTIVE
+  REJECTED
+}
