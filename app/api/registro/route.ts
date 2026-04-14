@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
 
+type RoomWithRelations = {
+  id: string;
+  name: string;
+  teams: { id: string }[];
+  teachers: { id: string }[];
+};
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -30,7 +37,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const rooms = await prisma.room.findMany({
+    const rooms = (await prisma.room.findMany({
       orderBy: {
         name: "asc",
       },
@@ -38,7 +45,7 @@ export async function POST(request: Request) {
         teams: true,
         teachers: true,
       },
-    });
+    })) as RoomWithRelations[];
 
     if (rooms.length === 0) {
       return NextResponse.json(
@@ -51,7 +58,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const availableRooms = rooms.filter((room) => room.teams.length < 5);
+    const availableRooms = rooms.filter(
+      (room: RoomWithRelations) => room.teams.length < 5
+    );
 
     if (availableRooms.length === 0) {
       return NextResponse.json(
@@ -64,18 +73,16 @@ export async function POST(request: Request) {
     }
 
     const roomsWithTeacher = availableRooms.filter(
-      (room) => room.teachers.length > 0
+      (room: RoomWithRelations) => room.teachers.length > 0
     );
 
     const roomsWithoutTeacher = availableRooms.filter(
-      (room) => room.teachers.length === 0
+      (room: RoomWithRelations) => room.teachers.length === 0
     );
 
-    const sortByLoadAndName = <
-      T extends { name: string; teams: Array<unknown> }
-    >(
-      a: T,
-      b: T
+    const sortByLoadAndName = (
+      a: RoomWithRelations,
+      b: RoomWithRelations
     ) => {
       if (a.teams.length !== b.teams.length) {
         return a.teams.length - b.teams.length;
@@ -85,8 +92,8 @@ export async function POST(request: Request) {
     };
 
     const assignedRoom =
-      roomsWithTeacher.sort(sortByLoadAndName)[0] ??
-      roomsWithoutTeacher.sort(sortByLoadAndName)[0];
+      [...roomsWithTeacher].sort(sortByLoadAndName)[0] ??
+      [...roomsWithoutTeacher].sort(sortByLoadAndName)[0];
 
     if (!assignedRoom) {
       return NextResponse.json(
