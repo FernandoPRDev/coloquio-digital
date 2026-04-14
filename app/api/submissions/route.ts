@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { EvaluationStatus } from "@prisma/client";
 
 export async function POST(request: Request) {
   try {
@@ -32,7 +31,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (team.evaluation?.status === EvaluationStatus.REVIEWED) {
+    if (team.evaluation?.status === "REVIEWED") {
       return NextResponse.json(
         {
           ok: false,

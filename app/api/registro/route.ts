@@ -107,42 +107,38 @@ export async function POST(request: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const result = await prisma.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: {
-          name: representativeName,
-          email,
-          password: hashedPassword,
-          role: "TEAM",
-        },
-      });
+    const user = await prisma.user.create({
+      data: {
+        name: representativeName,
+        email,
+        password: hashedPassword,
+        role: "TEAM",
+      },
+    });
 
-      const team = await tx.team.create({
-        data: {
-          teamName,
-          projectName,
-          category,
-          members,
-          userId: user.id,
-          roomId: assignedRoom.id,
-        },
-      });
+    const team = await prisma.team.create({
+      data: {
+        teamName,
+        projectName,
+        category,
+        members,
+        userId: user.id,
+        roomId: assignedRoom.id,
+      },
+    });
 
-      await tx.evaluation.create({
-        data: {
-          teamId: team.id,
-        },
-      });
-
-      return { user, team };
+    await prisma.evaluation.create({
+      data: {
+        teamId: team.id,
+      },
     });
 
     return NextResponse.json({
       ok: true,
       message: "Usuario y equipo creados correctamente",
       data: {
-        user: result.user,
-        team: result.team,
+        user,
+        team,
         room: {
           id: assignedRoom.id,
           name: assignedRoom.name,
