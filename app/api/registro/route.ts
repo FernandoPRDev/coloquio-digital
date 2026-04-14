@@ -35,6 +35,10 @@ export async function POST(request: Request) {
       orderBy: {
         name: "asc",
       },
+      include: {
+        teams: true,
+        teachers: true,
+      },
     });
 
     if (rooms.length === 0) {
@@ -48,22 +52,48 @@ export async function POST(request: Request) {
       );
     }
 
-    const roomsWithTeams = await prisma.room.findMany({
-      orderBy: {
-        name: "asc",
-      },
-      include: {
-        teams: true,
-      },
-    });
+    const availableRooms = rooms.filter((room) => room.teams.length < 5);
 
-    const assignedRoom = roomsWithTeams.find((room) => room.teams.length < 5);
+    if (availableRooms.length === 0) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Se alcanzó el límite máximo de 25 equipos.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const roomsWithTeacher = availableRooms.filter(
+      (room) => room.teachers.length > 0
+    );
+
+    const roomsWithoutTeacher = availableRooms.filter(
+      (room) => room.teachers.length === 0
+    );
+
+    const sortByLoadAndName = <
+      T extends { name: string; teams: Array<unknown> }
+    >(
+      a: T,
+      b: T
+    ) => {
+      if (a.teams.length !== b.teams.length) {
+        return a.teams.length - b.teams.length;
+      }
+
+      return a.name.localeCompare(b.name);
+    };
+
+    const assignedRoom =
+      roomsWithTeacher.sort(sortByLoadAndName)[0] ??
+      roomsWithoutTeacher.sort(sortByLoadAndName)[0];
 
     if (!assignedRoom) {
       return NextResponse.json(
         {
           ok: false,
-          message: "Se alcanzó el límite máximo de 25 equipos.",
+          message: "No fue posible asignar una sala.",
         },
         { status: 400 }
       );
@@ -107,7 +137,10 @@ export async function POST(request: Request) {
       data: {
         user: result.user,
         team: result.team,
-        room: assignedRoom,
+        room: {
+          id: assignedRoom.id,
+          name: assignedRoom.name,
+        },
       },
     });
   } catch (error: any) {

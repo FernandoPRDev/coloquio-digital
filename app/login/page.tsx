@@ -3,15 +3,18 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import PublicLayout from "@/components/PublicLayout";
+import SimpleToast from "@/components/SimpleToast";
 
 export default function LoginPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setErrorMessage("");
 
     try {
       const response = await fetch("/api/login", {
@@ -39,11 +42,11 @@ export default function LoginPage() {
           router.push("/dashboard/docente");
         }
       } else {
-        alert(result.message || "Credenciales inválidas");
+        setErrorMessage(result.message || "Credenciales inválidas");
       }
     } catch (error) {
       console.error("Error al iniciar sesión:", error);
-      alert("Ocurrió un error al iniciar sesión.");
+      setErrorMessage("Ocurrió un error al iniciar sesión.");
     }
   };
 
@@ -58,6 +61,10 @@ export default function LoginPage() {
           <p className="mt-2 text-sm text-zinc-600">
             Ingresa con tu correo y contraseña.
           </p>
+
+          <div className="mt-6">
+            {errorMessage && <SimpleToast message={errorMessage} type="error" />}
+          </div>
 
           <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
             <div>
@@ -88,6 +95,15 @@ export default function LoginPage() {
                 required
                 className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-zinc-900 placeholder-zinc-400 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
               />
+            </div>
+
+            <div className="flex justify-end">
+              <a
+                href="/recuperar-password"
+                className="text-sm font-medium text-zinc-700 underline underline-offset-4 hover:text-zinc-900"
+              >
+                Olvidé mi contraseña
+              </a>
             </div>
 
             <button
