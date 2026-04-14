@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-export async function PATCH(request: Request) {
+export async function DELETE(request: Request) {
   try {
     const body = await request.json();
     const { userId } = body;
@@ -30,34 +30,32 @@ export async function PATCH(request: Request) {
       );
     }
 
-    await prisma.$transaction(async (tx) => {
-      if (user.team) {
-        await tx.submission.deleteMany({
+    if (user.team) {
+      await prisma.submission.deleteMany({
+        where: {
+          teamId: user.team.id,
+        },
+      });
+
+      if (user.team.evaluation) {
+        await prisma.evaluation.delete({
           where: {
             teamId: user.team.id,
           },
         });
-
-        if (user.team.evaluation) {
-          await tx.evaluation.delete({
-            where: {
-              teamId: user.team.id,
-            },
-          });
-        }
-
-        await tx.team.delete({
-          where: {
-            id: user.team.id,
-          },
-        });
       }
 
-      await tx.user.delete({
+      await prisma.team.delete({
         where: {
-          id: user.id,
+          id: user.team.id,
         },
       });
+    }
+
+    await prisma.user.delete({
+      where: {
+        id: user.id,
+      },
     });
 
     return NextResponse.json({
