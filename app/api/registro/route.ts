@@ -17,31 +17,98 @@ export async function POST(request: Request) {
       members,
     } = body;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+    });
 
-    const user = await prisma.user.create({
-      data: {
-        name: representativeName,
-        email,
-        password: hashedPassword,
-        role: Role.TEAM,
+    if (existingUser) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Ya existe un usuario con ese correo",
+        },
+        { status: 400 }
+      );
+    }
+
+    const rooms = await prisma.room.findMany({
+      orderBy: {
+        name: "asc",
       },
     });
 
-    const team = await prisma.team.create({
-      data: {
-        teamName,
-        projectName,
-        category,
-        members,
-        userId: user.id,
+    if (rooms.length === 0) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message:
+            "No hay salas configuradas. El administrador debe crear las salas primero.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const roomsWithTeams = await prisma.room.findMany({
+      orderBy: {
+        name: "asc",
       },
+      include: {
+        teams: true,
+      },
+    });
+
+    const assignedRoom = roomsWithTeams.find((room) => room.teams.length < 5);
+
+    if (!assignedRoom) {
+      return NextResponse.json(
+        {
+          ok: false,
+          message: "Se alcanzó el límite máximo de 25 equipos.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          name: representativeName,
+          email,
+          password: hashedPassword,
+          role: Role.TEAM,
+        },
+      });
+
+      const team = await tx.team.create({
+        data: {
+          teamName,
+          projectName,
+          category,
+          members,
+          userId: user.id,
+          roomId: assignedRoom.id,
+        },
+      });
+
+      await tx.evaluation.create({
+        data: {
+          teamId: team.id,
+        },
+      });
+
+      return { user, team };
     });
 
     return NextResponse.json({
       ok: true,
       message: "Usuario y equipo creados correctamente",
-      data: { user, team },
+      data: {
+        user: result.user,
+        team: result.team,
+        room: assignedRoom,
+      },
     });
   } catch (error: any) {
     console.error("Error en registro:", error);
