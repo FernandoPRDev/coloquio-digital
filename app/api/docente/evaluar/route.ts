@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { EvaluationStatus } from "@prisma/client";
 
 export async function PATCH(request: Request) {
   try {
@@ -13,7 +12,7 @@ export async function PATCH(request: Request) {
       },
       data: {
         comments,
-        status: EvaluationStatus.REVIEWED,
+        status: "REVIEWED",
       },
     });
 
