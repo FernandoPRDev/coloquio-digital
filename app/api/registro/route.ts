@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Role } from "@prisma/client";
 import bcrypt from "bcrypt";
 
 export async function POST(request: Request) {
@@ -107,7 +106,7 @@ export async function POST(request: Request) {
           name: representativeName,
           email,
           password: hashedPassword,
-          role: Role.TEAM,
+          role: "TEAM",
         },
       });
 
