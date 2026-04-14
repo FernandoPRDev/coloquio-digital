@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Role } from "@prisma/client";
 
 export async function GET() {
   try {
@@ -16,7 +15,7 @@ export async function GET() {
         },
         teachers: {
           where: {
-            role: Role.TEACHER,
+            role: "TEACHER",
           },
         },
       },
