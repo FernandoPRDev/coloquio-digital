@@ -1,5 +1,6 @@
 "use client";
 
+import SimpleToast from "@/components/SimpleToast";
 import { useEffect, useState } from "react";
 
 type Team = {
