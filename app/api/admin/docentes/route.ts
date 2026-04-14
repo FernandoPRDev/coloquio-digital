@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Role };
 import bcrypt from "bcrypt";
 
 export async function POST(request: Request) {
@@ -38,7 +37,7 @@ export async function POST(request: Request) {
 
     const teacherAlreadyAssigned = await prisma.user.findFirst({
       where: {
-        role: Role.TEACHER,
+        role: "TEACHER",
         roomId,
       },
     });
@@ -60,8 +59,8 @@ export async function POST(request: Request) {
         name,
         email,
         password: hashedPassword,
-        role: Role.TEACHER,
-        status: Status.ACTIVE,
+        role: "TEACHER",
+        status: "ACTIVE",
         roomId,
       },
     });
