@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Status } from "@prisma/client";
 
 export async function PATCH(request: Request) {
   try {
@@ -12,7 +11,7 @@ export async function PATCH(request: Request) {
         id: userId,
       },
       data: {
-        status: Status.ACTIVE,
+        status: "ACTIVE",
       },
     });
 
