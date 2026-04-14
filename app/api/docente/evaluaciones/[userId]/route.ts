@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { Role } from "@prisma/client";
 
 export async function GET(
   _request: Request,
@@ -18,7 +17,7 @@ export async function GET(
       },
     });
 
-    if (!teacher || teacher.role !== Role.TEACHER || !teacher.roomId) {
+    if (!teacher || teacher.role !== "TEACHER" || !teacher.roomId) {
       return NextResponse.json(
         {
           ok: false,
