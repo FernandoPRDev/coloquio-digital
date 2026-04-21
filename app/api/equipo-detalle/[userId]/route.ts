@@ -47,7 +47,7 @@ export async function GET(
       {
         ok: false,
         message: "Error al obtener detalle del equipo",
-        error: error.message,
+        error: error?.message || "Error desconocido",
       },
       { status: 500 }
     );

@@ -24,16 +24,18 @@ type Submission = {
   id: string;
   title: string;
   description?: string;
-  publicLink: string;
+  publicLink?: string | null;
+  pdfUrl?: string | null;
+  videoUrl?: string | null;
+  pdfFilename?: string | null;
+  videoFilename?: string | null;
   createdAt: string;
   team: {
     id: string;
     teamName: string;
     projectName: string;
     category: string;
-    members: string;
     user: {
-      id: string;
       name: string;
       email: string;
     };
@@ -100,67 +102,67 @@ export default function AdminDashboardPage() {
     }
   };
 
-    const fetchAllSubmissions = async () => {
+  const fetchAllSubmissions = async () => {
     try {
-        const response = await fetch("/api/admin/entregas");
+      const response = await fetch("/api/admin/entregas");
 
-        if (!response.ok) {
+      if (!response.ok) {
         console.error("Error HTTP al cargar entregas:", response.status);
         return;
-        }
-
-        const result = await response.json();
-
-        if (result.ok) {
-        setSubmissions(result.submissions);
-        }
-    } catch (error) {
-        console.error("Error al cargar entregas:", error);
-    }
-    };
-
-    const fetchRooms = async () => {
-      try {
-        const response = await fetch("/api/admin/salas");
-
-        if (!response.ok) {
-          console.error("Error HTTP al cargar salas:", response.status);
-          return;
-        }
-
-        const result = await response.json();
-
-        if (result.ok) {
-          setRooms(result.rooms);
-        }
-      } catch (error) {
-        console.error("Error al cargar salas:", error);
       }
-    };
+
+      const result = await response.json();
+
+      if (result.ok) {
+        setSubmissions(result.submissions);
+      }
+    } catch (error) {
+      console.error("Error al cargar entregas:", error);
+    }
+  };
+
+  const fetchRooms = async () => {
+    try {
+      const response = await fetch("/api/admin/salas");
+
+      if (!response.ok) {
+        console.error("Error HTTP al cargar salas:", response.status);
+        return;
+      }
+
+      const result = await response.json();
+
+      if (result.ok) {
+        setRooms(result.rooms);
+      }
+    } catch (error) {
+      console.error("Error al cargar salas:", error);
+    }
+  };
 
   useEffect(() => {
-  const storedUser = localStorage.getItem("user");
+    const storedUser = localStorage.getItem("user");
 
-  if (!storedUser) {
-    window.location.href = "/login";
-    return;
-  }
+    if (!storedUser) {
+      window.location.href = "/login";
+      return;
+    }
 
-  const parsedUser = JSON.parse(storedUser);
+    const parsedUser = JSON.parse(storedUser);
 
-  if (parsedUser.role !== "ADMIN") {
-    window.location.href = "/login";
-    return;
-  }
+    if (parsedUser.role !== "ADMIN") {
+      window.location.href = "/login";
+      return;
+    }
 
-  setUser(parsedUser);
+    setUser(parsedUser);
 
-  Promise.all([
-    fetchPendingUsers(),
-    fetchAllSubmissions(),
-    fetchRooms(),
-  ]).finally(() => setLoading(false));
-}, []);
+    Promise.all([
+      fetchPendingUsers(),
+      fetchAllSubmissions(),
+      fetchRooms(),
+    ]).finally(() => setLoading(false));
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -350,277 +352,308 @@ export default function AdminDashboardPage() {
                       <p className="text-sm text-gray-500">Estado</p>
                       <span className="inline-block rounded-full bg-orange-100 px-3 py-1 text-sm font-semibold text-orange-700">
                         {pendingUser.status}
-                        </span>
+                      </span>
                     </div>
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-3">
                     <button
-                        onClick={() => handleApprove(pendingUser.id)}
-                        className="rounded-xl bg-black px-4 py-2 text-white transition hover:opacity-90"
+                      onClick={() => handleApprove(pendingUser.id)}
+                      className="rounded-xl bg-black px-4 py-2 text-white transition hover:opacity-90"
                     >
-                        Aprobar usuario
+                      Aprobar usuario
                     </button>
 
                     <button
-                        onClick={() => handleReject(pendingUser.id)}
-                        className="rounded-xl border border-red-600 px-4 py-2 text-red-600 transition hover:bg-red-600 hover:text-white"
+                      onClick={() => handleReject(pendingUser.id)}
+                      className="rounded-xl border border-red-600 px-4 py-2 text-red-600 transition hover:bg-red-600 hover:text-white"
                     >
-                        Rechazar usuario
+                      Rechazar usuario
                     </button>
-                    </div>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </section>
         <section className="mt-10">
-            <h2 className="text-xl font-semibold text-gray-900">
-                Entregas registradas por los equipos
-            </h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Entregas registradas por los equipos
+          </h2>
 
-            {loading ? (
-                <p className="mt-4 text-gray-600">Cargando entregas...</p>
-            ) : submissions.length === 0 ? (
-                <p className="mt-4 text-gray-600">
-                Aún no hay entregas registradas por los equipos.
-                </p>
-            ) : (
-                <div className="mt-4 space-y-4">
-                {submissions.map((submission) => (
-                    <div
-                    key={submission.id}
-                    className="rounded-xl border border-gray-200 p-5"
-                    >
-                    <div className="grid gap-4 md:grid-cols-2">
-                        <div>
-                        <p className="text-sm text-gray-500">Título de la entrega</p>
-                        <p className="font-semibold text-gray-900">
-                            {submission.title}
-                        </p>
-                        </div>
-
-                        <div>
-                        <p className="text-sm text-gray-500">Equipo</p>
-                        <p className="font-semibold text-gray-900">
-                            {submission.team.teamName}
-                        </p>
-                        </div>
-
-                        <div>
-                        <p className="text-sm text-gray-500">Proyecto</p>
-                        <p className="font-semibold text-gray-900">
-                            {submission.team.projectName}
-                        </p>
-                        </div>
-
-                        <div>
-                        <p className="text-sm text-gray-500">Categoría</p>
-                        <p className="font-semibold text-gray-900">
-                            {submission.team.category}
-                        </p>
-                        </div>
-
-                        <div>
-                        <p className="text-sm text-gray-500">Representante</p>
-                        <p className="font-semibold text-gray-900">
-                            {submission.team.user.name}
-                        </p>
-                        </div>
-
-                        <div>
-                        <p className="text-sm text-gray-500">Correo</p>
-                        <p className="font-semibold text-gray-900">
-                            {submission.team.user.email}
-                        </p>
-                        </div>
-                    </div>
-
-                    {submission.description && (
-                        <div className="mt-4">
-                        <p className="text-sm text-gray-500">Descripción</p>
-                        <p className="text-gray-700">{submission.description}</p>
-                        </div>
-                    )}
-
-                    <div className="mt-4 flex flex-wrap items-center gap-4">
-                        <a
-                        href={submission.publicLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-xl bg-black px-4 py-2 text-white transition hover:opacity-90"
-                        >
-                        Ver entrega
-                        </a>
-
-                        <p className="text-sm text-gray-500">
-                        Registrada el{" "}
-                        {new Date(submission.createdAt).toLocaleString()}
-                        </p>
-                    </div>
-                    </div>
-                ))}
-                </div>
-            )}
-            </section>
-
-            <section className="mt-10">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Salas y docentes asignados
-              </h2>
-
-              {loading ? (
-                <p className="mt-4 text-gray-600">Cargando salas...</p>
-              ) : rooms.length === 0 ? (
-                <p className="mt-4 text-gray-600">
-                  No hay salas registradas.
-                </p>
-              ) : (
-                <div className="mt-4 grid gap-4 lg:grid-cols-2">
-                  {rooms.map((room) => (
-                    <div
-                      key={room.id}
-                      className="rounded-xl border border-gray-200 p-5"
-                    >
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {room.name}
-                        </h3>
-
-                        <span className="rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700">
-                          {room.teams.length} equipos
-                        </span>
-                      </div>
-
-                      <div className="mt-4">
-                        <p className="text-sm text-gray-500">Docente asignado</p>
-
-                        {room.teachers.length > 0 ? (
-                          <div className="mt-2">
-                            <p className="font-semibold text-gray-900">
-                              {room.teachers[0].name}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              {room.teachers[0].email}
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="mt-2 text-sm text-orange-600">
-                            Sin docente asignado
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="mt-4">
-                        <p className="text-sm text-gray-500">Equipos</p>
-
-                        {room.teams.length === 0 ? (
-                          <p className="mt-2 text-sm text-gray-600">
-                            No hay equipos asignados aún.
-                          </p>
-                        ) : (
-                          <ul className="mt-2 space-y-2 text-sm text-gray-700">
-                            {room.teams.map((team) => (
-                              <li
-                                key={team.id}
-                                className="rounded-lg bg-zinc-50 px-3 py-2"
-                              >
-                                <span className="font-medium">{team.teamName}</span>
-                                {" — "}
-                                {team.projectName}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
-            <section className="mt-10">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Crear docente y asignar sala
-              </h2>
-
-              <form
-                className="mt-4 space-y-4 rounded-xl border border-gray-200 p-6"
-                onSubmit={handleCreateTeacher}
-              >
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-800">
-                      Nombre del docente
-                    </label>
-                    <input
-                      type="text"
-                      value={teacherName}
-                      onChange={(event) => setTeacherName(event.target.value)}
-                      required
-                      className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-800">
-                      Correo electrónico
-                    </label>
-                    <input
-                      type="email"
-                      value={teacherEmail}
-                      onChange={(event) => setTeacherEmail(event.target.value)}
-                      required
-                      className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-800">
-                      Contraseña
-                    </label>
-                    <input
-                      type="password"
-                      value={teacherPassword}
-                      onChange={(event) => setTeacherPassword(event.target.value)}
-                      required
-                      className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-gray-800">
-                      Sala
-                    </label>
-                    <select
-                      value={selectedRoomId}
-                      onChange={(event) => setSelectedRoomId(event.target.value)}
-                      required
-                      className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
-                    >
-                      <option value="">Selecciona una sala</option>
-                      {rooms.map((room) => (
-                        <option
-                          key={room.id}
-                          value={room.id}
-                          disabled={room.teachers.length > 0}
-                        >
-                          {room.name}
-                          {room.teachers.length > 0 ? " (ocupada)" : ""}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className="rounded-xl bg-black px-5 py-3 text-white transition hover:opacity-90"
+          {loading ? (
+            <p className="mt-4 text-gray-600">Cargando entregas...</p>
+          ) : submissions.length === 0 ? (
+            <p className="mt-4 text-gray-600">
+              Aún no hay entregas registradas por los equipos.
+            </p>
+          ) : (
+            <div className="mt-4 space-y-4">
+              {submissions.map((submission) => (
+                <div
+                  key={submission.id}
+                  className="rounded-xl border border-gray-200 p-5"
                 >
-                  Crear docente
-                </button>
-              </form>
-            </section>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <p className="text-sm text-gray-500">Título de la entrega</p>
+                      <p className="font-semibold text-gray-900">
+                        {submission.title}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-gray-500">Equipo</p>
+                      <p className="font-semibold text-gray-900">
+                        {submission.team.teamName}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-gray-500">Proyecto</p>
+                      <p className="font-semibold text-gray-900">
+                        {submission.team.projectName}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-gray-500">Categoría</p>
+                      <p className="font-semibold text-gray-900">
+                        {submission.team.category}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-gray-500">Representante</p>
+                      <p className="font-semibold text-gray-900">
+                        {submission.team.user.name}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-gray-500">Correo</p>
+                      <p className="font-semibold text-gray-900">
+                        {submission.team.user.email}
+                      </p>
+                    </div>
+                  </div>
+
+                  {submission.description && (
+                    <div className="mt-4">
+                      <p className="text-sm text-gray-500">Descripción</p>
+                      <p className="text-gray-700">{submission.description}</p>
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex flex-wrap items-center gap-4">
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                      {submission.pdfUrl && (
+                        <a
+                          href={submission.pdfUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                        >
+                          Ver PDF
+                        </a>
+                      )}
+
+                      {submission.videoUrl && (
+                        <a
+                          href={submission.videoUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100"
+                        >
+                          Ver video
+                        </a>
+                      )}
+
+                      {!submission.pdfUrl && !submission.videoUrl && submission.publicLink && (
+                        <a
+                          href={submission.publicLink}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                        >
+                          Ver entrega
+                        </a>
+                      )}
+                    </div>
+
+                    <div className="mt-3 space-y-1 text-sm text-zinc-500">
+                      {submission.pdfFilename && <p>PDF: {submission.pdfFilename}</p>}
+                      {submission.videoFilename && <p>Video: {submission.videoFilename}</p>}
+                    </div>
+
+                    <p className="text-sm text-gray-500">
+                      Registrada el{" "}
+                      {new Date(submission.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-10">
+          <h2 className="text-xl font-semibold text-gray-900">
+            Salas y docentes asignados
+          </h2>
+
+          {loading ? (
+            <p className="mt-4 text-gray-600">Cargando salas...</p>
+          ) : rooms.length === 0 ? (
+            <p className="mt-4 text-gray-600">
+              No hay salas registradas.
+            </p>
+          ) : (
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              {rooms.map((room) => (
+                <div
+                  key={room.id}
+                  className="rounded-xl border border-gray-200 p-5"
+                >
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {room.name}
+                    </h3>
+
+                    <span className="rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700">
+                      {room.teams.length} equipos
+                    </span>
+                  </div>
+
+                  <div className="mt-4">
+                    <p className="text-sm text-gray-500">Docente asignado</p>
+
+                    {room.teachers.length > 0 ? (
+                      <div className="mt-2">
+                        <p className="font-semibold text-gray-900">
+                          {room.teachers[0].name}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {room.teachers[0].email}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm text-orange-600">
+                        Sin docente asignado
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-4">
+                    <p className="text-sm text-gray-500">Equipos</p>
+
+                    {room.teams.length === 0 ? (
+                      <p className="mt-2 text-sm text-gray-600">
+                        No hay equipos asignados aún.
+                      </p>
+                    ) : (
+                      <ul className="mt-2 space-y-2 text-sm text-gray-700">
+                        {room.teams.map((team) => (
+                          <li
+                            key={team.id}
+                            className="rounded-lg bg-zinc-50 px-3 py-2"
+                          >
+                            <span className="font-medium">{team.teamName}</span>
+                            {" — "}
+                            {team.projectName}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="mt-10">
+          <h2 className="text-xl font-semibold text-gray-900">
+            Crear docente y asignar sala
+          </h2>
+
+          <form
+            className="mt-4 space-y-4 rounded-xl border border-gray-200 p-6"
+            onSubmit={handleCreateTeacher}
+          >
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-800">
+                  Nombre del docente
+                </label>
+                <input
+                  type="text"
+                  value={teacherName}
+                  onChange={(event) => setTeacherName(event.target.value)}
+                  required
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-800">
+                  Correo electrónico
+                </label>
+                <input
+                  type="email"
+                  value={teacherEmail}
+                  onChange={(event) => setTeacherEmail(event.target.value)}
+                  required
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-800">
+                  Contraseña
+                </label>
+                <input
+                  type="password"
+                  value={teacherPassword}
+                  onChange={(event) => setTeacherPassword(event.target.value)}
+                  required
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-800">
+                  Sala
+                </label>
+                <select
+                  value={selectedRoomId}
+                  onChange={(event) => setSelectedRoomId(event.target.value)}
+                  required
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
+                >
+                  <option value="">Selecciona una sala</option>
+                  {rooms.map((room) => (
+                    <option
+                      key={room.id}
+                      value={room.id}
+                      disabled={room.teachers.length > 0}
+                    >
+                      {room.name}
+                      {room.teachers.length > 0 ? " (ocupada)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="rounded-xl bg-black px-5 py-3 text-white transition hover:opacity-90"
+            >
+              Crear docente
+            </button>
+          </form>
+        </section>
 
       </div>
     </main>

@@ -7,7 +7,11 @@ type Submission = {
   id: string;
   title: string;
   description?: string;
-  publicLink: string;
+  publicLink?: string | null;
+  pdfUrl?: string | null;
+  videoUrl?: string | null;
+  pdfFilename?: string | null;
+  videoFilename?: string | null;
   createdAt: string;
 };
 
@@ -164,22 +168,20 @@ export default function DocenteDashboardPage() {
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => setActiveTab("PENDING")}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-              activeTab === "PENDING"
-                ? "bg-zinc-900 text-white"
-                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-            }`}
+            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${activeTab === "PENDING"
+              ? "bg-zinc-900 text-white"
+              : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+              }`}
           >
             Pendientes
           </button>
 
           <button
             onClick={() => setActiveTab("REVIEWED")}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-              activeTab === "REVIEWED"
-                ? "bg-zinc-900 text-white"
-                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-            }`}
+            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${activeTab === "REVIEWED"
+              ? "bg-zinc-900 text-white"
+              : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+              }`}
           >
             Evaluados
           </button>
@@ -283,14 +285,45 @@ export default function DocenteDashboardPage() {
                           )}
 
                           <div className="mt-3 flex flex-wrap items-center gap-4">
-                            <a
-                              href={submission.publicLink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-                            >
-                              Ver entrega
-                            </a>
+                            <div className="mt-3 flex flex-wrap items-center gap-3">
+                              {submission.pdfUrl && (
+                                <a
+                                  href={submission.pdfUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                                >
+                                  Ver PDF
+                                </a>
+                              )}
+
+                              {submission.videoUrl && (
+                                <a
+                                  href={submission.videoUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100"
+                                >
+                                  Ver video
+                                </a>
+                              )}
+
+                              {!submission.pdfUrl && !submission.videoUrl && submission.publicLink && (
+                                <a
+                                  href={submission.publicLink}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+                                >
+                                  Ver entrega
+                                </a>
+                              )}
+                            </div>
+
+                            <div className="mt-3 space-y-1 text-sm text-zinc-500">
+                              {submission.pdfFilename && <p>PDF: {submission.pdfFilename}</p>}
+                              {submission.videoFilename && <p>Video: {submission.videoFilename}</p>}
+                            </div>
 
                             <p className="text-sm text-zinc-500">
                               Registrada el{" "}
