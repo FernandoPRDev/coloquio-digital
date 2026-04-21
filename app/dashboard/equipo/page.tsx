@@ -15,8 +15,11 @@ type Submission = {
   id: string;
   title: string;
   description?: string;
-  pdfFilename?: string;
-  videoFilename?: string;
+  publicLink?: string | null;
+  pdfUrl?: string | null;
+  videoUrl?: string | null;
+  pdfFilename?: string | null;
+  videoFilename?: string | null;
   createdAt: string;
 };
 
