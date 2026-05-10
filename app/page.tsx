@@ -126,7 +126,7 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <p className="text-3xl font-black text-[#f88f03]">5</p>
+                  <p className="text-3xl font-black text-[#f88f03]">10</p>
                   <p className="mt-1 text-sm text-zinc-600">
                     Salas de exposición
                   </p>
