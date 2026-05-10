@@ -30,6 +30,33 @@ type PendingUser = {
   team: Team | null;
 };
 
+type ActiveUser = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  team: {
+    id: string;
+    teamName: string;
+    projectName: string;
+    category: string;
+    members: string;
+    room?: {
+      id: string;
+      name: string;
+    } | null;
+    submissions: Submission[];
+    publicComments: {
+      id: string;
+    }[];
+    evaluation?: {
+      id: string;
+      status: string;
+    } | null;
+  } | null;
+};
+
 type Submission = {
   id: string;
   title: string;
@@ -162,6 +189,8 @@ export default function AdminDashboardPage() {
   const [teacherPassword, setTeacherPassword] = useState("");
   const [selectedRoomId, setSelectedRoomId] = useState("");
 
+  const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
+
   const [settings, setSettings] = useState<EventSettings | null>(null);
   const [submissionDeadline, setSubmissionDeadline] = useState("");
   const [expositionOpenAt, setExpositionOpenAt] = useState("");
@@ -180,6 +209,19 @@ export default function AdminDashboardPage() {
     const localDate = new Date(date.getTime() - offset * 60 * 1000);
 
     return localDate.toISOString().slice(0, 16);
+  };
+
+  const fetchActiveUsers = async () => {
+    try {
+      const response = await fetch("/api/admin/usuarios-activos");
+      const result = await response.json();
+
+      if (result.ok) {
+        setActiveUsers(result.users);
+      }
+    } catch (error) {
+      console.error("Error al cargar usuarios activos:", error);
+    }
   };
 
   const fetchSettings = async () => {
@@ -277,6 +319,7 @@ export default function AdminDashboardPage() {
           fetchAllSubmissions(),
           fetchRooms(),
           fetchSettings(),
+          fetchActiveUsers(),
         ]);
       } catch (error) {
         console.error("Error al cargar sesión admin:", error);
@@ -288,6 +331,7 @@ export default function AdminDashboardPage() {
 
     loadSession();
   }, []);
+
 
   const handleApprove = async (userId: string) => {
     setSuccessMessage("");
@@ -313,6 +357,45 @@ export default function AdminDashboardPage() {
     } catch (error) {
       console.error("Error al aprobar usuario:", error);
       setErrorMessage("Ocurrió un error al aprobar el usuario.");
+    }
+  };
+
+  const handleDeleteActiveUser = async (userId: string) => {
+    const confirmed = confirm(
+      "¿Seguro que deseas eliminar este usuario activo? Se eliminará su equipo, entregas, evaluación y comentarios públicos."
+    );
+
+    if (!confirmed) return;
+
+    setSuccessMessage("");
+    setErrorMessage("");
+
+    try {
+      const response = await fetch("/api/admin/eliminar-usuario", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      const result = await response.json();
+
+      if (result.ok) {
+        setSuccessMessage("Usuario activo eliminado correctamente.");
+
+        await Promise.all([
+          fetchActiveUsers(),
+          fetchPendingUsers(),
+          fetchRooms(),
+          fetchAllSubmissions(),
+        ]);
+      } else {
+        setErrorMessage(result.message || "No se pudo eliminar el usuario.");
+      }
+    } catch (error) {
+      console.error("Error al eliminar usuario activo:", error);
+      setErrorMessage("Ocurrió un error al eliminar el usuario.");
     }
   };
 
@@ -638,6 +721,90 @@ export default function AdminDashboardPage() {
             </div>
           )}
         </SectionCard>
+
+        <SectionCard className="border-l-4 border-l-red-500">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-red-500">
+                Gestión de equipos
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-zinc-900">
+                Usuarios activos
+              </h2>
+              <p className="mt-2 text-sm text-zinc-600">
+                Elimina equipos ya aprobados junto con sus entregas, evaluaciones y comentarios.
+              </p>
+            </div>
+
+            <StatusBadge tone="blue">{activeUsers.length} activo(s)</StatusBadge>
+          </div>
+
+          {loading ? (
+            <p className="mt-6 text-zinc-600">Cargando usuarios activos...</p>
+          ) : activeUsers.length === 0 ? (
+            <div className="mt-6 rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center">
+              <p className="font-bold text-zinc-900">
+                No hay usuarios activos registrados.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-4">
+              {activeUsers.map((activeUser) => {
+                const categoryStyle = getOngCategoryStyle(activeUser.team?.category);
+
+                return (
+                  <article
+                    key={activeUser.id}
+                    className="rounded-3xl border border-zinc-200 bg-zinc-50 p-5"
+                  >
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      <MiniInfo label="Representante" value={activeUser.name} />
+                      <MiniInfo label="Correo" value={activeUser.email} />
+                      <MiniInfo label="Equipo" value={activeUser.team?.teamName} />
+                      <MiniInfo label="Proyecto" value={activeUser.team?.projectName} />
+                      <MiniInfo label="Sala" value={activeUser.team?.room?.name} />
+
+                      <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                          Categoría
+                        </p>
+                        <span
+                          className={`mt-2 inline-flex rounded-full border px-3 py-1 text-sm font-semibold ${categoryStyle.bg} ${categoryStyle.border} ${categoryStyle.text}`}
+                        >
+                          {categoryStyle.label}
+                        </span>
+                      </div>
+
+                      <MiniInfo
+                        label="Entregas"
+                        value={String(activeUser.team?.submissions?.length || 0)}
+                      />
+                      <MiniInfo
+                        label="Comentarios"
+                        value={String(activeUser.team?.publicComments?.length || 0)}
+                      />
+                      <MiniInfo
+                        label="Evaluación"
+                        value={activeUser.team?.evaluation?.status || "PENDING"}
+                      />
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteActiveUser(activeUser.id)}
+                        className="rounded-xl border border-red-300 bg-white px-5 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+                      >
+                        Eliminar usuario activo
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </SectionCard>
+
 
         <SectionCard className="border-l-4 border-l-[#2e5090]">
           <div className="flex flex-wrap items-start justify-between gap-4">
