@@ -4,8 +4,8 @@ import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
 
-const MAX_PDF_SIZE = 10 * 1024 * 1024; // 10 MB
-const MAX_VIDEO_SIZE = 100 * 1024 * 1024; // 100 MB
+const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50 MB
+const MAX_VIDEO_SIZE = 600 * 1024 * 1024; // 600 MB
 
 const ALLOWED_PDF_TYPES = ["application/pdf"];
 const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
                 return NextResponse.json(
                     {
                         ok: false,
-                        message: "El PDF supera el tamaño máximo permitido de 10 MB.",
+                        message: "El PDF supera el tamaño máximo permitido de 50 MB.",
                     },
                     { status: 400 }
                 );
@@ -140,7 +140,7 @@ export async function POST(request: Request) {
                 return NextResponse.json(
                     {
                         ok: false,
-                        message: "El video supera el tamaño máximo permitido de 100 MB.",
+                        message: "El video supera el tamaño máximo permitido de 600 MB.",
                     },
                     { status: 400 }
                 );
