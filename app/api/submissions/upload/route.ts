@@ -17,11 +17,6 @@ function sanitizeFilename(name: string) {
         .replace(/[^a-z0-9.\-_]/g, "");
 }
 
-const SUBMISSION_DEADLINE = new Date(
-    process.env.NEXT_PUBLIC_SUBMISSION_DEADLINE ||
-    "2026-05-20T23:59:00-06:00"
-);
-
 export async function POST(request: Request) {
     try {
         const formData = await request.formData();
@@ -47,7 +42,9 @@ export async function POST(request: Request) {
             );
         }
 
-        if (new Date() > SUBMISSION_DEADLINE) {
+        const settings = await prisma.eventSettings.findFirst();
+
+        if (settings?.submissionDeadline && new Date() > settings.submissionDeadline) {
             return NextResponse.json(
                 {
                     ok: false,

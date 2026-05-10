@@ -2,6 +2,9 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import SimpleToast from "@/components/SimpleToast";
+import { FormField, inputClassName, PrimaryButton, SectionCard, StatusBadge } from "@/components/ui";
+import { getOngCategoryStyle } from "@/lib/ongCategories";
 
 type User = {
   id: string;
@@ -44,11 +47,89 @@ type Team = {
   evaluation?: Evaluation | null;
 };
 
-const SUBMISSION_DEADLINE = new Date(
-  process.env.NEXT_PUBLIC_SUBMISSION_DEADLINE ||
-  "2026-05-20T23:59:00-06:00"
-);
+function InfoCard({
+  label,
+  value,
+  accent = "blue",
+}: {
+  label: string;
+  value?: string | null;
+  accent?: "blue" | "green" | "orange" | "neutral";
+}) {
+  const accents = {
+    blue: "bg-[#2e5090]/10 text-[#2e5090]",
+    green: "bg-[#009e51]/10 text-[#009e51]",
+    orange: "bg-[#f88f03]/10 text-[#f88f03]",
+    neutral: "bg-zinc-100 text-zinc-600",
+  };
 
+  return (
+    <div className="group min-w-0 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-zinc-500">{label}</p>
+          <p className="mt-2 break-words text-base font-black text-zinc-900">
+            {value || "No disponible"}
+          </p>
+        </div>
+
+        <div
+          className={`h-3 w-3 shrink-0 rounded-full ${accents[accent]}`}
+        />
+      </div>
+    </div>
+  );
+}
+
+function FileCard({
+  href,
+  title,
+  filename,
+  type,
+}: {
+  href?: string | null;
+  title: string;
+  filename?: string | null;
+  type: "pdf" | "video";
+}) {
+  if (!href) return null;
+
+  const isPdf = type === "pdf";
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="group flex items-center justify-between gap-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#2e5090] hover:shadow-md"
+    >
+      <div className="flex min-w-0 items-center gap-4">
+        <div
+          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-2xl ${isPdf
+            ? "bg-red-50 text-red-600"
+            : "bg-[#2e5090]/10 text-[#2e5090]"
+            }`}
+        >
+          {isPdf ? "📄" : "▶"}
+        </div>
+
+        <div className="min-w-0">
+          <p className="font-black text-zinc-900">{title}</p>
+          <p className="mt-1 truncate text-sm text-zinc-500">
+            {filename || "Ver archivo"}
+          </p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            {isPdf ? "Documento" : "Video"}
+          </p>
+        </div>
+      </div>
+
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition group-hover:bg-[#2e5090] group-hover:text-white">
+        ↗
+      </span>
+    </a>
+  );
+}
 export default function EquipoDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
@@ -62,7 +143,22 @@ export default function EquipoDashboardPage() {
   const [uploadSuccess, setUploadSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isSubmissionDeadlinePassed = new Date() > SUBMISSION_DEADLINE;
+  const [submissionDeadline, setSubmissionDeadline] = useState<string | null>(null);
+  const isSubmissionDeadlinePassed = submissionDeadline
+    ? new Date() > new Date(submissionDeadline)
+    : false;
+  const fetchPublicSettings = async () => {
+    try {
+      const response = await fetch("/api/settings-public");
+      const result = await response.json();
+
+      if (result.ok) {
+        setSubmissionDeadline(result.settings?.submissionDeadline || null);
+      }
+    } catch (error) {
+      console.error("Error al cargar configuración pública:", error);
+    }
+  };
 
   const fetchTeamData = async (userId: string) => {
     try {
@@ -83,8 +179,8 @@ export default function EquipoDashboardPage() {
           const latestSubmission = result.team.submissions[0];
           setTitle(latestSubmission.title || "");
           setDescription(latestSubmission.description || "");
-          setPdfFile(latestSubmission.pdfFilename || "");
-          setVideoFile(latestSubmission.videoFilename || "");
+          setPdfFile(null);
+          setVideoFile(null);
         } else {
           setTitle("");
           setDescription("");
@@ -112,6 +208,7 @@ export default function EquipoDashboardPage() {
 
         setUser(result.user);
         await fetchTeamData(result.user.id);
+        await fetchPublicSettings();
       } catch (error) {
         console.error("Error al cargar sesión equipo:", error);
         window.location.href = "/login";
@@ -195,257 +292,314 @@ export default function EquipoDashboardPage() {
         <p className="text-zinc-600">No se encontraron datos del equipo.</p>
       ) : (
         <div className="space-y-8">
-          <section>
-            <h2 className="text-xl font-semibold text-zinc-900">
+          <SectionCard>
+            <h2 className="text-xl font-black text-zinc-900">
               Información del usuario
             </h2>
 
-            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl border border-zinc-200 p-4">
-                <p className="text-sm text-zinc-500">Nombre</p>
-                <p className="mt-1 font-semibold text-zinc-900">{user.name}</p>
-              </div>
+            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <InfoCard label="Nombre" value={user?.name} />
+              <InfoCard label="Correo" value={user?.email} />
+              <InfoCard label="Rol" value={user?.role} />
 
-              <div className="rounded-2xl border border-zinc-200 p-4">
-                <p className="text-sm text-zinc-500">Correo</p>
-                <p className="mt-1 font-semibold text-zinc-900">{user.email}</p>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 p-4">
-                <p className="text-sm text-zinc-500">Rol</p>
-                <p className="mt-1 font-semibold text-zinc-900">{user.role}</p>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 p-4">
+              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
                 <p className="text-sm text-zinc-500">Estado</p>
-                <p className="mt-1 font-semibold text-zinc-900">{user.status}</p>
+                <div className="mt-2">
+                  <StatusBadge tone="success">Activo</StatusBadge>
+                </div>
               </div>
             </div>
-          </section>
+          </SectionCard>
 
-          <section>
-            <h2 className="text-xl font-semibold text-zinc-900">
+          <SectionCard>
+            <h2 className="text-xl font-black text-zinc-900">
               Información del equipo
             </h2>
 
-            <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-2xl border border-zinc-200 p-4">
-                <p className="text-sm text-zinc-500">Equipo</p>
-                <p className="mt-1 font-semibold text-zinc-900">{team.teamName}</p>
+            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <InfoCard label="Equipo" value={team.teamName} />
+              <InfoCard label="Proyecto" value={team.projectName} />
+
+              <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
+                <p className="text-sm text-zinc-500">Categoría de ONG</p>
+                <div className="mt-2">
+                  <span
+                    className={`inline-flex rounded-full border px-3 py-1 text-sm font-semibold ${getOngCategoryStyle(team.category).bg
+                      } ${getOngCategoryStyle(team.category).border} ${getOngCategoryStyle(team.category).text
+                      }`}
+                  >
+                    {getOngCategoryStyle(team.category).label}
+                  </span>
+                </div>
               </div>
 
-              <div className="rounded-2xl border border-zinc-200 p-4">
-                <p className="text-sm text-zinc-500">Proyecto</p>
-                <p className="mt-1 font-semibold text-zinc-900">
-                  {team.projectName}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 p-4">
-                <p className="text-sm text-zinc-500">Categoría</p>
-                <p className="mt-1 font-semibold text-zinc-900">{team.category}</p>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 p-4">
-                <p className="text-sm text-zinc-500">Sala</p>
-                <p className="mt-1 font-semibold text-zinc-900">
-                  {team.room?.name || "Sin sala asignada"}
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 p-4 md:col-span-2 xl:col-span-4">
-                <p className="text-sm text-zinc-500">Integrantes</p>
-                <p className="mt-1 font-semibold text-zinc-900">{team.members}</p>
-              </div>
+              <InfoCard label="Sala" value={team.room?.name} />
             </div>
-          </section>
 
-          <section>
-            <h2 className="text-xl font-semibold text-zinc-900">
-              Estado de evaluación
-            </h2>
+            <div className="mt-4">
+              <InfoCard label="Integrantes" value={team.members} />
+            </div>
+          </SectionCard>
 
-            <div className="mt-4 rounded-2xl border border-zinc-200 p-5">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="text-sm text-zinc-500">Estado actual:</span>
+          <SectionCard className="border-l-4 border-l-[#009e51]">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#009e51]">
+                  Seguimiento docente
+                </p>
 
-                <span
-                  className={`rounded-full px-3 py-1 text-sm font-medium ${team.evaluation?.status === "REVIEWED"
+                <h2 className="mt-2 text-xl font-black text-zinc-900">
+                  Estado de evaluación
+                </h2>
+
+                <p className="mt-2 text-sm text-zinc-600">
+                  Aquí podrás consultar si tu entrega ya fue revisada y leer los comentarios del docente.
+                </p>
+              </div>
+
+              <StatusBadge
+                tone={team.evaluation?.status === "REVIEWED" ? "success" : "warning"}
+              >
+                {team.evaluation?.status === "REVIEWED" ? "Evaluado" : "Pendiente"}
+              </StatusBadge>
+            </div>
+
+            <div className="mt-6 rounded-3xl border border-zinc-200 bg-zinc-50 p-5">
+              <div className="flex items-start gap-4">
+                <div
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-xl ${team.evaluation?.status === "REVIEWED"
                     ? "bg-green-100 text-green-700"
                     : "bg-orange-100 text-orange-700"
                     }`}
                 >
-                  {team.evaluation?.status === "REVIEWED"
-                    ? "Evaluado"
-                    : "Pendiente"}
-                </span>
+                  {team.evaluation?.status === "REVIEWED" ? "✓" : "!"}
+                </div>
+
+                <div>
+                  <p className="font-black text-zinc-900">
+                    Comentarios del docente
+                  </p>
+
+                  {team.evaluation?.comments ? (
+                    <p className="mt-2 leading-6 text-zinc-700">
+                      {team.evaluation.comments}
+                    </p>
+                  ) : (
+                    <p className="mt-2 leading-6 text-zinc-500">
+                      Aún no hay comentarios registrados para este equipo.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard className="border-l-4 border-l-[#2e5090]">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#2e5090]/10 text-xl text-[#2e5090]">
+                ⏱
               </div>
 
-              <div className="mt-4 rounded-xl bg-zinc-50 p-4">
-                <p className="text-sm font-medium text-zinc-800">
-                  Comentarios del docente
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#2e5090]">
+                  Periodo de entrega
                 </p>
 
-                {team.evaluation?.comments ? (
-                  <p className="mt-2 text-zinc-700">{team.evaluation.comments}</p>
-                ) : (
-                  <p className="mt-2 text-zinc-500">
-                    Aún no hay comentarios registrados para este equipo.
-                  </p>
-                )}
+                <h2 className="mt-2 text-xl font-black text-zinc-900">
+                  Fecha límite de entrega
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-zinc-600">
+                  Puedes registrar o actualizar tu entrega hasta el{" "}
+                  <span className="font-black text-zinc-900">
+                    {submissionDeadline
+                      ? new Date(submissionDeadline).toLocaleString()
+                      : "sin fecha límite configurada"}
+                  </span>
+                  . Una vez evaluada tu entrega o pasada esta fecha, ya no será posible
+                  modificarla.
+                </p>
               </div>
             </div>
-          </section>
-
-          <section>
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
-              <h2 className="text-lg font-semibold text-zinc-900">
-                Fecha límite de entrega
-              </h2>
-
-              <p className="mt-2 text-sm text-zinc-600">
-                Puedes registrar o actualizar tu entrega hasta el{" "}
-                <span className="font-semibold text-zinc-900">
-                  {SUBMISSION_DEADLINE.toLocaleString()}
-                </span>
-                . Una vez evaluada tu entrega o pasada esta fecha, ya no será posible
-                modificarla.
-              </p>
-            </div>
-          </section>
+          </SectionCard>
 
           {team.evaluation?.status !== "REVIEWED" && !isSubmissionDeadlinePassed ? (
+            <SectionCard className="border-l-4 border-l-[#2e5090]">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#2e5090]">
+                    Entrega del proyecto
+                  </p>
 
-            <section>
-              <h2 className="text-xl font-semibold text-zinc-900">
-                Registrar entrega
-              </h2>
-              <div className="space-y-3">
+                  <h2 className="mt-2 text-2xl font-black text-zinc-900">
+                    {team.submissions.length > 0
+                      ? "Actualizar entrega"
+                      : "Registrar entrega"}
+                  </h2>
+
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-600">
+                    Sube el documento PDF y el video de presentación de tu proyecto. Si ya
+                    existe una entrega, puedes actualizar solo el texto o reemplazar los
+                    archivos.
+                  </p>
+                </div>
+
+                <StatusBadge tone={team.submissions.length > 0 ? "success" : "warning"}>
+                  {team.submissions.length > 0 ? "Entrega cargada" : "Pendiente"}
+                </StatusBadge>
+              </div>
+
+              <div className="mt-6 rounded-2xl border border-orange-200 bg-orange-50 p-4">
+                <p className="text-sm font-semibold text-orange-800">
+                  Consideraciones importantes
+                </p>
+                <p className="mt-1 text-sm leading-6 text-orange-700">
+                  Si no seleccionas nuevos archivos, se conservarán los archivos actuales.
+                  Una vez evaluada la entrega o pasada la fecha límite, ya no podrás
+                  modificarla.
+                </p>
+              </div>
+
+              <div className="mt-6 space-y-3">
                 {uploadSuccess && (
-                  <div className="rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-700">
-                    {uploadSuccess}
-                  </div>
+                  <SimpleToast message={uploadSuccess} type="success" />
                 )}
 
                 {uploadError && (
-                  <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-                    {uploadError}
-                  </div>
+                  <SimpleToast message={uploadError} type="error" />
                 )}
-
-                <p className="text-sm text-zinc-500">
-                  Si no seleccionas nuevos archivos, se conservarán los actuales.
-                </p>
               </div>
+
               <form
-                className="mt-4 space-y-4 rounded-2xl border border-zinc-200 p-6"
+                className="mt-6 space-y-6"
                 onSubmit={handleSubmitSubmission}
               >
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-zinc-800">
-                    Título de la entrega
-                  </label>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(event) => setTitle(event.target.value)}
-                    required
-                    className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-zinc-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
-                  />
+                <div className="grid gap-5 md:grid-cols-2">
+                  <FormField label="Título de la entrega">
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(event) => setTitle(event.target.value)}
+                      required
+                      className={inputClassName}
+                      placeholder="Ej. Estrategia de comunicación para ONG ambiental"
+                    />
+                  </FormField>
+
+                  <FormField label="Descripción">
+                    <textarea
+                      rows={4}
+                      value={description}
+                      onChange={(event) => setDescription(event.target.value)}
+                      className={inputClassName}
+                      placeholder="Describe brevemente en qué consiste la entrega..."
+                    />
+                  </FormField>
                 </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-zinc-800">
-                    Descripción
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={description}
-                    onChange={(event) => setDescription(event.target.value)}
-                    className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-zinc-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
-                  />
+                <div className="grid gap-5 md:grid-cols-2">
+                  <FormField
+                    label="Documento PDF"
+                    helpText="Formato permitido: PDF. Tamaño máximo: 10 MB."
+                  >
+                    <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 px-5 py-8 text-center transition hover:border-[#2e5090] hover:bg-[#2e5090]/5">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-2xl">
+                        📄
+                      </div>
+
+                      <p className="mt-4 text-sm font-bold text-zinc-900">
+                        {pdfFile ? pdfFile.name : "Selecciona un PDF"}
+                      </p>
+
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Haz clic para cargar o reemplazar el archivo
+                      </p>
+
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] || null;
+                          setPdfFile(file);
+                        }}
+                        required={!team.submissions[0]?.pdfUrl}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {team.submissions[0]?.pdfUrl && (
+                      <a
+                        href={team.submissions[0].pdfUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 inline-flex text-sm font-semibold text-[#2e5090] underline underline-offset-4"
+                      >
+                        Ver PDF actual
+                      </a>
+                    )}
+                  </FormField>
+
+                  <FormField
+                    label="Video de presentación"
+                    helpText="Formatos permitidos: MP4, WEBM o MOV. Tamaño máximo: 100 MB."
+                  >
+                    <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 px-5 py-8 text-center transition hover:border-[#2e5090] hover:bg-[#2e5090]/5">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2e5090]/10 text-2xl text-[#2e5090]">
+                        ▶
+                      </div>
+
+                      <p className="mt-4 text-sm font-bold text-zinc-900">
+                        {videoFile ? videoFile.name : "Selecciona un video"}
+                      </p>
+
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Haz clic para cargar o reemplazar el archivo
+                      </p>
+
+                      <input
+                        type="file"
+                        accept="video/mp4,video/webm,video/quicktime"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] || null;
+                          setVideoFile(file);
+                        }}
+                        required={!team.submissions[0]?.videoUrl}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {team.submissions[0]?.videoUrl && (
+                      <a
+                        href={team.submissions[0].videoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 inline-flex text-sm font-semibold text-[#2e5090] underline underline-offset-4"
+                      >
+                        Ver video actual
+                      </a>
+                    )}
+                  </FormField>
                 </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-zinc-800">
-                    PDF de la entrega
-                  </label>
-
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0] || null;
-                      setPdfFile(file);
-                    }}
-                    required={!team.submissions[0]?.pdfUrl}
-                    className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-zinc-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
-                  />
-
-                  <p className="mt-2 text-xs text-zinc-500">
-                    Máximo 10 MB. Solo archivos PDF.
+                <div className="flex flex-col gap-3 border-t border-zinc-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-zinc-500">
+                    Revisa que tu entrega esté completa antes de enviarla.
                   </p>
 
-                  {team.submissions[0]?.pdfUrl && (
-                    <a
-                      href={team.submissions[0].pdfUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-block text-sm font-medium text-zinc-700 underline"
-                    >
-                      Ver PDF actual
-                    </a>
-                  )}
+                  <PrimaryButton
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full sm:w-auto"
+                  >
+                    {isSubmitting
+                      ? "Guardando..."
+                      : team.submissions.length > 0
+                        ? "Actualizar entrega"
+                        : "Guardar entrega"}
+                  </PrimaryButton>
                 </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-zinc-800">
-                    Video de presentación
-                  </label>
-
-                  <input
-                    type="file"
-                    accept="video/mp4,video/webm,video/quicktime"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0] || null;
-                      setVideoFile(file);
-                    }}
-                    required={!team.submissions[0]?.videoUrl}
-                    className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-zinc-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
-                  />
-
-                  <p className="mt-2 text-xs text-zinc-500">
-                    Máximo 100 MB. Formatos: MP4, WEBM o MOV.
-                  </p>
-
-                  {team.submissions[0]?.videoUrl && (
-                    <a
-                      href={team.submissions[0].videoUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-2 inline-block text-sm font-medium text-zinc-700 underline"
-                    >
-                      Ver video actual
-                    </a>
-                  )}
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className={`rounded-xl px-5 py-3 text-white transition ${isSubmitting
-                    ? "cursor-not-allowed bg-zinc-400"
-                    : "bg-zinc-900 hover:opacity-90"
-                    }`}
-                >
-                  {isSubmitting
-                    ? "Guardando..."
-                    : team.submissions.length > 0
-                      ? "Actualizar entrega"
-                      : "Guardar entrega"}
-                </button>
               </form>
-            </section>
+            </SectionCard>
           ) : (
             <section>
               <h2 className="text-xl font-semibold text-zinc-900">
@@ -463,63 +617,136 @@ export default function EquipoDashboardPage() {
             </section>
           )}
 
-          <section>
-            <h2 className="text-xl font-semibold text-zinc-900">
-              Entregas registradas
-            </h2>
+          <SectionCard className="border-l-4 border-l-[#f88f03]">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#f88f03]">
+                  Historial de entrega
+                </p>
+
+                <h2 className="mt-2 text-xl font-black text-zinc-900">
+                  Entregas registradas
+                </h2>
+
+                <p className="mt-2 text-sm text-zinc-600">
+                  Aquí puedes consultar los archivos y detalles de la entrega actual de tu equipo.
+                </p>
+              </div>
+
+              <StatusBadge tone={team.submissions.length > 0 ? "success" : "warning"}>
+                {team.submissions.length > 0 ? "Con entrega" : "Sin entrega"}
+              </StatusBadge>
+            </div>
 
             {team.submissions.length === 0 ? (
-              <p className="mt-4 text-zinc-600">
-                Aún no hay entregas registradas.
-              </p>
+              <div className="mt-6 rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center">
+                <p className="text-lg font-black text-zinc-900">
+                  Aún no hay entregas registradas
+                </p>
+                <p className="mt-2 text-sm text-zinc-500">
+                  Cuando guardes tu PDF y video, aparecerán aquí para consulta.
+                </p>
+              </div>
             ) : (
-              <div className="mt-4 space-y-4">
+              <div className="mt-6 space-y-5">
                 {team.submissions.map((submission) => (
                   <article
                     key={submission.id}
-                    className="rounded-2xl border border-zinc-200 p-5"
+                    className="overflow-hidden rounded-3xl border border-zinc-200 bg-white shadow-sm"
                   >
-                    <p className="text-lg font-semibold text-zinc-900">
-                      {submission.title}
-                    </p>
+                    <div className="h-2 w-full bg-[#f88f03]" />
 
-                    {submission.description && (
-                      <p className="mt-2 text-zinc-600">
-                        {submission.description}
-                      </p>
-                    )}
+                    <div className="p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-400">
+                            Entrega
+                          </p>
 
-                    {submission.pdfUrl && (
-                      <a
-                        href={submission.pdfUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-3 inline-block rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-                      >
-                        Ver PDF
-                      </a>
-                    )}
+                          <h3 className="mt-2 break-words text-xl font-black text-zinc-900">
+                            {submission.title}
+                          </h3>
 
-                    {submission.videoUrl && (
-                      <a
-                        href={submission.videoUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-3 ml-3 inline-block rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100"
-                      >
-                        Ver video
-                      </a>
-                    )}
+                          {submission.description && (
+                            <p className="mt-3 max-w-3xl text-sm leading-6 text-zinc-600">
+                              {submission.description}
+                            </p>
+                          )}
+                        </div>
 
-                    <p className="mt-3 text-sm text-zinc-500">
-                      Registrada el{" "}
-                      {new Date(submission.createdAt).toLocaleString()}
-                    </p>
+                        <div className="rounded-2xl bg-zinc-50 px-4 py-3 text-right">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                            Registrada
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-zinc-700">
+                            {new Date(submission.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 grid gap-4 md:grid-cols-2">
+                        {submission.pdfUrl && (
+                          <a
+                            href={submission.pdfUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="group flex items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 transition hover:border-[#2e5090] hover:bg-white hover:shadow-sm"
+                          >
+                            <div className="flex min-w-0 items-center gap-4">
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 text-xl">
+                                📄
+                              </div>
+
+                              <div className="min-w-0">
+                                <p className="font-black text-zinc-900">
+                                  Documento PDF
+                                </p>
+                                <p className="truncate text-sm text-zinc-500">
+                                  {submission.pdfFilename || "Ver PDF"}
+                                </p>
+                              </div>
+                            </div>
+
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-zinc-400 transition group-hover:bg-[#2e5090] group-hover:text-white">
+                              ↗
+                            </span>
+                          </a>
+                        )}
+
+                        {submission.videoUrl && (
+                          <a
+                            href={submission.videoUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="group flex items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 transition hover:border-[#2e5090] hover:bg-white hover:shadow-sm"
+                          >
+                            <div className="flex min-w-0 items-center gap-4">
+                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#2e5090]/10 text-xl text-[#2e5090]">
+                                ▶
+                              </div>
+
+                              <div className="min-w-0">
+                                <p className="font-black text-zinc-900">
+                                  Video de presentación
+                                </p>
+                                <p className="truncate text-sm text-zinc-500">
+                                  {submission.videoFilename || "Ver video"}
+                                </p>
+                              </div>
+                            </div>
+
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-zinc-400 transition group-hover:bg-[#2e5090] group-hover:text-white">
+                              ↗
+                            </span>
+                          </a>
+                        )}
+                      </div>
+                    </div>
                   </article>
                 ))}
               </div>
             )}
-          </section>
+          </SectionCard>
         </div>
       )}
     </DashboardLayout>

@@ -1,7 +1,17 @@
 "use client";
 
-import SimpleToast from "@/components/SimpleToast";
 import { useEffect, useState } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
+import SimpleToast from "@/components/SimpleToast";
+import {
+  FormField,
+  inputClassName,
+  PrimaryButton,
+  SecondaryButton,
+  SectionCard,
+  StatusBadge,
+} from "@/components/ui";
+import { getOngCategoryStyle } from "@/lib/ongCategories";
 
 type Team = {
   id: string;
@@ -70,6 +80,77 @@ type Room = {
   }[];
 };
 
+type EventSettings = {
+  id: string;
+  submissionDeadline?: string | null;
+  expositionOpenAt?: string | null;
+  expositionEnabled: boolean;
+};
+
+function MiniInfo({
+  label,
+  value,
+}: {
+  label: string;
+  value?: string | null;
+}) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+        {label}
+      </p>
+      <p className="mt-2 break-words text-sm font-bold text-zinc-900">
+        {value || "No disponible"}
+      </p>
+    </div>
+  );
+}
+
+function FileCard({
+  href,
+  title,
+  filename,
+  type,
+}: {
+  href?: string | null;
+  title: string;
+  filename?: string | null;
+  type: "pdf" | "video";
+}) {
+  if (!href) return null;
+
+  const isPdf = type === "pdf";
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="group flex items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white p-4 transition hover:border-[#2e5090] hover:shadow-sm"
+    >
+      <div className="flex min-w-0 items-center gap-4">
+        <div
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl ${isPdf ? "bg-red-50" : "bg-[#2e5090]/10 text-[#2e5090]"
+            }`}
+        >
+          {isPdf ? "📄" : "▶"}
+        </div>
+
+        <div className="min-w-0">
+          <p className="font-black text-zinc-900">{title}</p>
+          <p className="truncate text-sm text-zinc-500">
+            {filename || "Ver archivo"}
+          </p>
+        </div>
+      </div>
+
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition group-hover:bg-[#2e5090] group-hover:text-white">
+        ↗
+      </span>
+    </a>
+  );
+}
+
 export default function AdminDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
@@ -81,7 +162,45 @@ export default function AdminDashboardPage() {
   const [teacherPassword, setTeacherPassword] = useState("");
   const [selectedRoomId, setSelectedRoomId] = useState("");
 
+  const [settings, setSettings] = useState<EventSettings | null>(null);
+  const [submissionDeadline, setSubmissionDeadline] = useState("");
+  const [expositionOpenAt, setExpositionOpenAt] = useState("");
+  const [expositionEnabled, setExpositionEnabled] = useState(true);
+
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+
   const [loading, setLoading] = useState(true);
+
+  const formatForDateTimeLocal = (value?: string | null) => {
+    if (!value) return "";
+
+    const date = new Date(value);
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - offset * 60 * 1000);
+
+    return localDate.toISOString().slice(0, 16);
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const response = await fetch("/api/admin/settings");
+      const result = await response.json();
+
+      if (result.ok) {
+        setSettings(result.settings);
+        setSubmissionDeadline(
+          formatForDateTimeLocal(result.settings.submissionDeadline)
+        );
+        setExpositionOpenAt(
+          formatForDateTimeLocal(result.settings.expositionOpenAt)
+        );
+        setExpositionEnabled(result.settings.expositionEnabled);
+      }
+    } catch (error) {
+      console.error("Error al cargar configuración:", error);
+    }
+  };
 
   const fetchPendingUsers = async () => {
     try {
@@ -157,6 +276,7 @@ export default function AdminDashboardPage() {
           fetchPendingUsers(),
           fetchAllSubmissions(),
           fetchRooms(),
+          fetchSettings(),
         ]);
       } catch (error) {
         console.error("Error al cargar sesión admin:", error);
@@ -169,12 +289,10 @@ export default function AdminDashboardPage() {
     loadSession();
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    window.location.href = "/login";
-  };
-
   const handleApprove = async (userId: string) => {
+    setSuccessMessage("");
+    setErrorMessage("");
+
     try {
       const response = await fetch("/api/admin/aprobar", {
         method: "PATCH",
@@ -187,18 +305,21 @@ export default function AdminDashboardPage() {
       const result = await response.json();
 
       if (result.ok) {
-        alert("Usuario aprobado correctamente");
-        fetchPendingUsers();
+        setSuccessMessage("Usuario aprobado correctamente.");
+        await Promise.all([fetchPendingUsers(), fetchRooms()]);
       } else {
-        alert(result.message || "No se pudo aprobar el usuario");
+        setErrorMessage(result.message || "No se pudo aprobar el usuario.");
       }
     } catch (error) {
       console.error("Error al aprobar usuario:", error);
-      alert("Ocurrió un error al aprobar el usuario");
+      setErrorMessage("Ocurrió un error al aprobar el usuario.");
     }
   };
 
   const handleReject = async (userId: string) => {
+    setSuccessMessage("");
+    setErrorMessage("");
+
     try {
       const response = await fetch("/api/admin/rechazar", {
         method: "PATCH",
@@ -211,16 +332,49 @@ export default function AdminDashboardPage() {
       const result = await response.json();
 
       if (result.ok) {
-        alert("Registro rechazado y eliminado correctamente");
-        fetchPendingUsers();
-        fetchRooms();
-        fetchAllSubmissions();
+        setSuccessMessage("Registro rechazado y eliminado correctamente.");
+        await Promise.all([fetchPendingUsers(), fetchRooms(), fetchAllSubmissions()]);
       } else {
-        alert(result.message || "No se pudo rechazar el usuario");
+        setErrorMessage(result.message || "No se pudo rechazar el usuario.");
       }
     } catch (error) {
       console.error("Error al rechazar usuario:", error);
-      alert("Ocurrió un error al rechazar el usuario");
+      setErrorMessage("Ocurrió un error al rechazar el usuario.");
+    }
+  };
+
+  const handleSaveSettings = async (
+    event: React.FormEvent<HTMLFormElement>
+  ) => {
+    event.preventDefault();
+
+    setSuccessMessage("");
+    setErrorMessage("");
+
+    try {
+      const response = await fetch("/api/admin/settings", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          submissionDeadline,
+          expositionOpenAt,
+          expositionEnabled,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.ok) {
+        setSuccessMessage("Configuración del evento guardada correctamente.");
+        setSettings(result.settings);
+      } else {
+        setErrorMessage(result.message || "No se pudo guardar la configuración.");
+      }
+    } catch (error) {
+      console.error("Error al guardar configuración:", error);
+      setErrorMessage("Ocurrió un error al guardar la configuración.");
     }
   };
 
@@ -228,6 +382,9 @@ export default function AdminDashboardPage() {
     event: React.FormEvent<HTMLFormElement>
   ) => {
     event.preventDefault();
+
+    setSuccessMessage("");
+    setErrorMessage("");
 
     try {
       const response = await fetch("/api/admin/docentes", {
@@ -243,398 +400,521 @@ export default function AdminDashboardPage() {
         }),
       });
 
-      if (!response.ok) {
-        const text = await response.text();
-
-        console.error(
-          "Error HTTP al crear docente:",
-          response.status,
-          text
-        );
-
-        alert("Ocurrió un error al crear el docente");
-        return;
-      }
-
       const result = await response.json();
 
       if (result.ok) {
-        alert("Docente creado correctamente");
+        setSuccessMessage("Docente creado correctamente.");
 
         setTeacherName("");
         setTeacherEmail("");
         setTeacherPassword("");
         setSelectedRoomId("");
 
-        fetchRooms();
+        await fetchRooms();
       } else {
-        alert(result.message || "No se pudo crear el docente");
+        setErrorMessage(result.message || "No se pudo crear el docente.");
       }
     } catch (error) {
       console.error("Error al crear docente:", error);
-      alert("Ocurrió un error al crear el docente");
+      setErrorMessage("Ocurrió un error al crear el docente.");
     }
   };
 
   return (
-    <main className="min-h-screen bg-gray-100 p-6">
-      <div className="mx-auto max-w-6xl rounded-2xl bg-white p-8 shadow-md">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Dashboard Admin
-            </h1>
-            {user && (
-              <p className="mt-2 text-sm text-gray-600">
-                Sesión iniciada como {user.name} ({user.email})
-              </p>
-            )}
-          </div>
+    <DashboardLayout
+      userName={user?.name}
+      userEmail={user?.email}
+      title="Dashboard Admin"
+      subtitle="Gestiona usuarios, salas, docentes, entregas y configuración general del evento."
+      navTitle="Admin"
+      navItems={[{ label: "Panel admin", href: "/dashboard/admin" }]}
+    >
+      <div className="space-y-8">
+        <div className="space-y-3">
+          {successMessage && (
+            <SimpleToast message={successMessage} type="success" />
+          )}
 
-          <button
-            onClick={handleLogout}
-            className="rounded-xl bg-black px-4 py-2 text-white transition hover:opacity-90"
-          >
-            Cerrar sesión
-          </button>
+          {errorMessage && <SimpleToast message={errorMessage} type="error" />}
         </div>
 
-        <section className="mt-8">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Usuarios pendientes de aprobación
-          </h2>
+        <section className="grid gap-4 md:grid-cols-4">
+          <SectionCard className="border-l-4 border-l-[#f88f03]">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#f88f03]">
+              Pendientes
+            </p>
+            <p className="mt-3 text-2xl font-black text-zinc-900">
+              {pendingUsers.length}
+            </p>
+          </SectionCard>
+
+          <SectionCard className="border-l-4 border-l-[#2e5090]">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#2e5090]">
+              Entregas
+            </p>
+            <p className="mt-3 text-2xl font-black text-zinc-900">
+              {submissions.length}
+            </p>
+          </SectionCard>
+
+          <SectionCard className="border-l-4 border-l-[#009e51]">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#009e51]">
+              Salas
+            </p>
+            <p className="mt-3 text-2xl font-black text-zinc-900">
+              {rooms.length}
+            </p>
+          </SectionCard>
+
+          <SectionCard className="border-l-4 border-l-zinc-900">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-500">
+              Exposición
+            </p>
+            <p className="mt-3 text-2xl font-black text-zinc-900">
+              {expositionEnabled ? "Activa" : "Inactiva"}
+            </p>
+          </SectionCard>
+        </section>
+
+        <SectionCard className="border-l-4 border-l-[#2e5090]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#2e5090]">
+                Configuración
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-zinc-900">
+                Configuración del evento
+              </h2>
+              <p className="mt-2 text-sm text-zinc-600">
+                Controla la fecha límite de entrega y la disponibilidad pública
+                de la exposición.
+              </p>
+            </div>
+
+            <StatusBadge tone={expositionEnabled ? "success" : "danger"}>
+              {expositionEnabled ? "Exposición activa" : "Exposición inactiva"}
+            </StatusBadge>
+          </div>
+
+          <form className="mt-6 space-y-5" onSubmit={handleSaveSettings}>
+            <div className="grid gap-5 md:grid-cols-2">
+              <FormField
+                label="Fecha límite de entrega"
+                helpText="Después de esta fecha, los equipos ya no podrán subir ni actualizar entregas."
+              >
+                <input
+                  type="datetime-local"
+                  value={submissionDeadline}
+                  onChange={(event) => setSubmissionDeadline(event.target.value)}
+                  className={inputClassName}
+                />
+              </FormField>
+
+              <FormField
+                label="Fecha de apertura de exposición"
+                helpText="Antes de esta fecha, la página pública de exposición no mostrará proyectos."
+              >
+                <input
+                  type="datetime-local"
+                  value={expositionOpenAt}
+                  onChange={(event) => setExpositionOpenAt(event.target.value)}
+                  className={inputClassName}
+                />
+              </FormField>
+            </div>
+
+            <label className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+              <input
+                type="checkbox"
+                checked={expositionEnabled}
+                onChange={(event) => setExpositionEnabled(event.target.checked)}
+                className="mt-1 h-4 w-4"
+              />
+
+              <span>
+                <span className="block text-sm font-bold text-zinc-900">
+                  Exposición activa
+                </span>
+                <span className="mt-1 block text-sm text-zinc-600">
+                  Si está desactivada, la página de exposición permanecerá
+                  oculta aunque ya haya llegado la fecha de apertura.
+                </span>
+              </span>
+            </label>
+
+            <PrimaryButton type="submit">Guardar configuración</PrimaryButton>
+          </form>
+        </SectionCard>
+
+        <SectionCard className="border-l-4 border-l-[#f88f03]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#f88f03]">
+                Aprobaciones
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-zinc-900">
+                Usuarios pendientes
+              </h2>
+            </div>
+
+            <StatusBadge tone={pendingUsers.length > 0 ? "warning" : "success"}>
+              {pendingUsers.length} pendiente(s)
+            </StatusBadge>
+          </div>
 
           {loading ? (
-            <p className="mt-4 text-gray-600">Cargando usuarios...</p>
+            <p className="mt-6 text-zinc-600">Cargando usuarios...</p>
           ) : pendingUsers.length === 0 ? (
-            <p className="mt-4 text-gray-600">
-              No hay usuarios pendientes por aprobar.
-            </p>
+            <div className="mt-6 rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center">
+              <p className="font-bold text-zinc-900">
+                No hay usuarios pendientes por aprobar.
+              </p>
+            </div>
           ) : (
-            <div className="mt-4 space-y-4">
-              {pendingUsers.map((pendingUser) => (
-                <div
-                  key={pendingUser.id}
-                  className="rounded-xl border border-gray-200 p-5"
-                >
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <p className="text-sm text-gray-500">Representante</p>
-                      <p className="font-semibold text-gray-900">
-                        {pendingUser.name}
-                      </p>
+            <div className="mt-6 space-y-4">
+              {pendingUsers.map((pendingUser) => {
+                const categoryStyle = getOngCategoryStyle(
+                  pendingUser.team?.category
+                );
+
+                return (
+                  <article
+                    key={pendingUser.id}
+                    className="rounded-3xl border border-zinc-200 bg-zinc-50 p-5"
+                  >
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                      <MiniInfo label="Representante" value={pendingUser.name} />
+                      <MiniInfo label="Correo" value={pendingUser.email} />
+                      <MiniInfo
+                        label="Equipo"
+                        value={pendingUser.team?.teamName}
+                      />
+                      <MiniInfo
+                        label="Proyecto"
+                        value={pendingUser.team?.projectName}
+                      />
+
+                      <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                          Categoría
+                        </p>
+                        <span
+                          className={`mt-2 inline-flex rounded-full border px-3 py-1 text-sm font-semibold ${categoryStyle.bg} ${categoryStyle.border} ${categoryStyle.text}`}
+                        >
+                          {categoryStyle.label}
+                        </span>
+                      </div>
+
+                      <div className="rounded-2xl border border-zinc-200 bg-white p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                          Estado
+                        </p>
+                        <div className="mt-2">
+                          <StatusBadge tone="warning">
+                            {pendingUser.status}
+                          </StatusBadge>
+                        </div>
+                      </div>
                     </div>
 
-                    <div>
-                      <p className="text-sm text-gray-500">Correo</p>
-                      <p className="font-semibold text-gray-900">
-                        {pendingUser.email}
-                      </p>
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <PrimaryButton
+                        type="button"
+                        onClick={() => handleApprove(pendingUser.id)}
+                      >
+                        Aprobar usuario
+                      </PrimaryButton>
+
+                      <button
+                        onClick={() => handleReject(pendingUser.id)}
+                        className="rounded-xl border border-red-300 bg-white px-5 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-50"
+                      >
+                        Rechazar usuario
+                      </button>
                     </div>
-
-                    <div>
-                      <p className="text-sm text-gray-500">Equipo</p>
-                      <p className="font-semibold text-gray-900">
-                        {pendingUser.team?.teamName || "Sin equipo"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-gray-500">Proyecto</p>
-                      <p className="font-semibold text-gray-900">
-                        {pendingUser.team?.projectName || "Sin proyecto"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-gray-500">Categoría</p>
-                      <p className="font-semibold text-gray-900">
-                        {pendingUser.team?.category || "Sin categoría"}
-                      </p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-gray-500">Estado</p>
-                      <span className="inline-block rounded-full bg-orange-100 px-3 py-1 text-sm font-semibold text-orange-700">
-                        {pendingUser.status}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-3">
-                    <button
-                      onClick={() => handleApprove(pendingUser.id)}
-                      className="rounded-xl bg-black px-4 py-2 text-white transition hover:opacity-90"
-                    >
-                      Aprobar usuario
-                    </button>
-
-                    <button
-                      onClick={() => handleReject(pendingUser.id)}
-                      className="rounded-xl border border-red-600 px-4 py-2 text-red-600 transition hover:bg-red-600 hover:text-white"
-                    >
-                      Rechazar usuario
-                    </button>
-                  </div>
-                </div>
-              ))}
+                  </article>
+                );
+              })}
             </div>
           )}
-        </section>
-        <section className="mt-10">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Entregas registradas por los equipos
-          </h2>
+        </SectionCard>
+
+        <SectionCard className="border-l-4 border-l-[#2e5090]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#2e5090]">
+                Entregas
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-zinc-900">
+                Entregas registradas
+              </h2>
+            </div>
+
+            <StatusBadge tone={submissions.length > 0 ? "blue" : "neutral"}>
+              {submissions.length} entrega(s)
+            </StatusBadge>
+          </div>
 
           {loading ? (
-            <p className="mt-4 text-gray-600">Cargando entregas...</p>
+            <p className="mt-6 text-zinc-600">Cargando entregas...</p>
           ) : submissions.length === 0 ? (
-            <p className="mt-4 text-gray-600">
-              Aún no hay entregas registradas por los equipos.
-            </p>
+            <div className="mt-6 rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center">
+              <p className="font-bold text-zinc-900">
+                Aún no hay entregas registradas.
+              </p>
+            </div>
           ) : (
-            <div className="mt-4 space-y-4">
-              {submissions.map((submission) => (
-                <div
-                  key={submission.id}
-                  className="rounded-xl border border-gray-200 p-5"
-                >
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <p className="text-sm text-gray-500">Título de la entrega</p>
-                      <p className="font-semibold text-gray-900">
-                        {submission.title}
-                      </p>
-                    </div>
+            <div className="mt-6 space-y-4">
+              {submissions.map((submission) => {
+                const categoryStyle = getOngCategoryStyle(
+                  submission.team.category
+                );
 
-                    <div>
-                      <p className="text-sm text-gray-500">Equipo</p>
-                      <p className="font-semibold text-gray-900">
-                        {submission.team.teamName}
-                      </p>
-                    </div>
+                return (
+                  <article
+                    key={submission.id}
+                    className="overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-50 shadow-sm"
+                  >
+                    <div
+                      className="h-2 w-full"
+                      style={{ backgroundColor: categoryStyle.color }}
+                    />
 
-                    <div>
-                      <p className="text-sm text-gray-500">Proyecto</p>
-                      <p className="font-semibold text-gray-900">
-                        {submission.team.projectName}
-                      </p>
-                    </div>
+                    <div className="space-y-5 p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-400">
+                            Entrega
+                          </p>
+                          <h3 className="mt-2 text-xl font-black text-zinc-900">
+                            {submission.title}
+                          </h3>
+                          {submission.description && (
+                            <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
+                              {submission.description}
+                            </p>
+                          )}
+                        </div>
 
-                    <div>
-                      <p className="text-sm text-gray-500">Categoría</p>
-                      <p className="font-semibold text-gray-900">
-                        {submission.team.category}
-                      </p>
-                    </div>
+                        <span
+                          className={`inline-flex rounded-full border px-3 py-1 text-sm font-semibold ${categoryStyle.bg} ${categoryStyle.border} ${categoryStyle.text}`}
+                        >
+                          {categoryStyle.label}
+                        </span>
+                      </div>
 
-                    <div>
-                      <p className="text-sm text-gray-500">Representante</p>
-                      <p className="font-semibold text-gray-900">
-                        {submission.team.user.name}
-                      </p>
-                    </div>
+                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <MiniInfo
+                          label="Equipo"
+                          value={submission.team.teamName}
+                        />
+                        <MiniInfo
+                          label="Proyecto"
+                          value={submission.team.projectName}
+                        />
+                        <MiniInfo
+                          label="Representante"
+                          value={submission.team.user.name}
+                        />
+                        <MiniInfo
+                          label="Correo"
+                          value={submission.team.user.email}
+                        />
+                        <MiniInfo
+                          label="Registrada"
+                          value={new Date(
+                            submission.createdAt
+                          ).toLocaleString()}
+                        />
+                      </div>
 
-                    <div>
-                      <p className="text-sm text-gray-500">Correo</p>
-                      <p className="font-semibold text-gray-900">
-                        {submission.team.user.email}
-                      </p>
-                    </div>
-                  </div>
-
-                  {submission.description && (
-                    <div className="mt-4">
-                      <p className="text-sm text-gray-500">Descripción</p>
-                      <p className="text-gray-700">{submission.description}</p>
-                    </div>
-                  )}
-
-                  <div className="mt-4 flex flex-wrap items-center gap-4">
-                    <div className="mt-4 flex flex-wrap items-center gap-3">
-                      {submission.pdfUrl && (
-                        <a
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <FileCard
+                          type="pdf"
+                          title="Documento PDF"
                           href={submission.pdfUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-                        >
-                          Ver PDF
-                        </a>
-                      )}
+                          filename={submission.pdfFilename}
+                        />
 
-                      {submission.videoUrl && (
-                        <a
+                        <FileCard
+                          type="video"
+                          title="Video de presentación"
                           href={submission.videoUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100"
-                        >
-                          Ver video
-                        </a>
-                      )}
+                          filename={submission.videoFilename}
+                        />
 
-                      {!submission.pdfUrl && !submission.videoUrl && submission.publicLink && (
-                        <a
-                          href={submission.publicLink}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-xl bg-black px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-                        >
-                          Ver entrega
-                        </a>
-                      )}
+                        {!submission.pdfUrl &&
+                          !submission.videoUrl &&
+                          submission.publicLink && (
+                            <a
+                              href={submission.publicLink}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-2xl bg-[#2e5090] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+                            >
+                              Ver entrega
+                            </a>
+                          )}
+                      </div>
                     </div>
-
-                    <div className="mt-3 space-y-1 text-sm text-zinc-500">
-                      {submission.pdfFilename && <p>PDF: {submission.pdfFilename}</p>}
-                      {submission.videoFilename && <p>Video: {submission.videoFilename}</p>}
-                    </div>
-
-                    <p className="text-sm text-gray-500">
-                      Registrada el{" "}
-                      {new Date(submission.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                  </article>
+                );
+              })}
             </div>
           )}
-        </section>
+        </SectionCard>
 
-        <section className="mt-10">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Salas y docentes asignados
-          </h2>
+        <SectionCard className="border-l-4 border-l-[#009e51]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#009e51]">
+                Salas
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-zinc-900">
+                Salas y docentes asignados
+              </h2>
+            </div>
+
+            <StatusBadge tone="success">{rooms.length} sala(s)</StatusBadge>
+          </div>
 
           {loading ? (
-            <p className="mt-4 text-gray-600">Cargando salas...</p>
+            <p className="mt-6 text-zinc-600">Cargando salas...</p>
           ) : rooms.length === 0 ? (
-            <p className="mt-4 text-gray-600">
-              No hay salas registradas.
-            </p>
+            <div className="mt-6 rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center">
+              <p className="font-bold text-zinc-900">No hay salas registradas.</p>
+            </div>
           ) : (
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div className="mt-6 grid gap-4 lg:grid-cols-2">
               {rooms.map((room) => (
-                <div
+                <article
                   key={room.id}
-                  className="rounded-xl border border-gray-200 p-5"
+                  className="rounded-3xl border border-zinc-200 bg-zinc-50 p-5"
                 >
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-gray-900">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-xl font-black text-zinc-900">
                       {room.name}
                     </h3>
 
-                    <span className="rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700">
-                      {room.teams.length} equipos
-                    </span>
+                    <StatusBadge tone="blue">
+                      {room.teams.length} equipo(s)
+                    </StatusBadge>
                   </div>
 
-                  <div className="mt-4">
-                    <p className="text-sm text-gray-500">Docente asignado</p>
+                  <div className="mt-5 rounded-2xl border border-zinc-200 bg-white p-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                      Docente asignado
+                    </p>
 
                     {room.teachers.length > 0 ? (
                       <div className="mt-2">
-                        <p className="font-semibold text-gray-900">
+                        <p className="font-bold text-zinc-900">
                           {room.teachers[0].name}
                         </p>
-                        <p className="text-sm text-gray-600">
+                        <p className="break-words text-sm text-zinc-600">
                           {room.teachers[0].email}
                         </p>
                       </div>
                     ) : (
-                      <p className="mt-2 text-sm text-orange-600">
+                      <p className="mt-2 text-sm font-semibold text-orange-600">
                         Sin docente asignado
                       </p>
                     )}
                   </div>
 
-                  <div className="mt-4">
-                    <p className="text-sm text-gray-500">Equipos</p>
+                  <div className="mt-5">
+                    <p className="text-sm font-black text-zinc-900">Equipos</p>
 
                     {room.teams.length === 0 ? (
-                      <p className="mt-2 text-sm text-gray-600">
+                      <p className="mt-2 text-sm text-zinc-600">
                         No hay equipos asignados aún.
                       </p>
                     ) : (
-                      <ul className="mt-2 space-y-2 text-sm text-gray-700">
-                        {room.teams.map((team) => (
-                          <li
-                            key={team.id}
-                            className="rounded-lg bg-zinc-50 px-3 py-2"
-                          >
-                            <span className="font-medium">{team.teamName}</span>
-                            {" — "}
-                            {team.projectName}
-                          </li>
-                        ))}
+                      <ul className="mt-3 space-y-2">
+                        {room.teams.map((team) => {
+                          const categoryStyle = getOngCategoryStyle(team.category);
+
+                          return (
+                            <li
+                              key={team.id}
+                              className="rounded-2xl border border-zinc-200 bg-white px-4 py-3"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                  <p className="font-bold text-zinc-900">
+                                    {team.teamName}
+                                  </p>
+                                  <p className="text-sm text-zinc-600">
+                                    {team.projectName}
+                                  </p>
+                                </div>
+
+                                <span
+                                  className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${categoryStyle.bg} ${categoryStyle.border} ${categoryStyle.text}`}
+                                >
+                                  {categoryStyle.label}
+                                </span>
+                              </div>
+                            </li>
+                          );
+                        })}
                       </ul>
                     )}
                   </div>
-                </div>
+                </article>
               ))}
             </div>
           )}
-        </section>
+        </SectionCard>
 
-        <section className="mt-10">
-          <h2 className="text-xl font-semibold text-gray-900">
-            Crear docente y asignar sala
-          </h2>
+        <SectionCard className="border-l-4 border-l-zinc-900">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-500">
+              Docentes
+            </p>
+            <h2 className="mt-2 text-2xl font-black text-zinc-900">
+              Crear docente y asignar sala
+            </h2>
+          </div>
 
-          <form
-            className="mt-4 space-y-4 rounded-xl border border-gray-200 p-6"
-            onSubmit={handleCreateTeacher}
-          >
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-800">
-                  Nombre del docente
-                </label>
+          <form className="mt-6 space-y-5" onSubmit={handleCreateTeacher}>
+            <div className="grid gap-5 md:grid-cols-2">
+              <FormField label="Nombre del docente">
                 <input
                   type="text"
                   value={teacherName}
                   onChange={(event) => setTeacherName(event.target.value)}
                   required
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
+                  className={inputClassName}
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-800">
-                  Correo electrónico
-                </label>
+              <FormField label="Correo electrónico">
                 <input
                   type="email"
                   value={teacherEmail}
                   onChange={(event) => setTeacherEmail(event.target.value)}
                   required
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
+                  className={inputClassName}
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-800">
-                  Contraseña
-                </label>
+              <FormField label="Contraseña">
                 <input
                   type="password"
                   value={teacherPassword}
                   onChange={(event) => setTeacherPassword(event.target.value)}
                   required
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
+                  className={inputClassName}
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-800">
-                  Sala
-                </label>
+              <FormField label="Sala">
                 <select
                   value={selectedRoomId}
                   onChange={(event) => setSelectedRoomId(event.target.value)}
                   required
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
+                  className={inputClassName}
                 >
                   <option value="">Selecciona una sala</option>
                   {rooms.map((room) => (
@@ -648,19 +928,13 @@ export default function AdminDashboardPage() {
                     </option>
                   ))}
                 </select>
-              </div>
+              </FormField>
             </div>
 
-            <button
-              type="submit"
-              className="rounded-xl bg-black px-5 py-3 text-white transition hover:opacity-90"
-            >
-              Crear docente
-            </button>
+            <PrimaryButton type="submit">Crear docente</PrimaryButton>
           </form>
-        </section>
-
+        </SectionCard>
       </div>
-    </main>
+    </DashboardLayout>
   );
 }

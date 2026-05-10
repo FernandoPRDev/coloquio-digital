@@ -36,37 +36,53 @@ export default function DashboardLayout({
   };
 
   return (
-    <main className="min-h-screen bg-zinc-100 p-4 lg:p-6">
+    <main className="min-h-screen bg-[#f7f8fa] px-4 py-5 lg:px-6 lg:py-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-6 lg:flex-row">
         <SidebarNav title={navTitle} items={navItems} />
 
-        <section className="flex-1 rounded-2xl bg-white p-6 shadow-sm lg:p-8">
-          <div className="flex flex-col gap-4 border-b border-zinc-200 pb-6 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-zinc-900">{title}</h1>
-              <p className="mt-2 text-sm text-zinc-600">{subtitle}</p>
+        <section className="min-w-0 flex-1 overflow-hidden rounded-[32px] border border-zinc-200 bg-white shadow-sm">
+          <header className="relative overflow-hidden border-b border-zinc-200 px-6 py-7 lg:px-8">
+            <div className="absolute -right-12 -top-16 h-40 w-40 rounded-full bg-[#2e5090]/10" />
+            <div className="absolute right-20 top-12 h-20 w-20 rounded-full bg-[#009e51]/10" />
+
+            <div className="relative z-10 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[#2e5090]">
+                  Panel de gestión
+                </p>
+
+                <h1 className="mt-2 text-3xl font-black tracking-tight text-zinc-900 md:text-4xl">
+                  {title}
+                </h1>
+
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-600">
+                  {subtitle}
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3 md:items-end">
+                {(userName || userEmail) && (
+                  <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm">
+                    {userName && (
+                      <p className="font-bold text-zinc-900">{userName}</p>
+                    )}
+                    {userEmail && (
+                      <p className="mt-1 text-xs text-zinc-500">{userEmail}</p>
+                    )}
+                  </div>
+                )}
+
+                <button
+                  onClick={handleLogout}
+                  className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100"
+                >
+                  Cerrar sesión
+                </button>
+              </div>
             </div>
+          </header>
 
-            <div className="flex flex-col gap-3 md:items-end">
-              {(userName || userEmail) && (
-                <div className="text-sm text-zinc-600">
-                  {userName && (
-                    <p className="font-semibold text-zinc-900">{userName}</p>
-                  )}
-                  {userEmail && <p>{userEmail}</p>}
-                </div>
-              )}
-
-              <button
-                onClick={handleLogout}
-                className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-              >
-                Cerrar sesión
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-8">{children}</div>
+          <div className="p-6 lg:p-8">{children}</div>
         </section>
       </div>
     </main>

@@ -2,6 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
+import SimpleToast from "@/components/SimpleToast";
+import {
+  FormField,
+  inputClassName,
+  PrimaryButton,
+  SectionCard,
+  StatusBadge,
+} from "@/components/ui";
+import { getOngCategoryStyle } from "@/lib/ongCategories";
 
 type Submission = {
   id: string;
@@ -52,6 +61,70 @@ type Room = {
   name: string;
 };
 
+function MiniInfo({
+  label,
+  value,
+}: {
+  label: string;
+  value?: string | null;
+}) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-zinc-200 bg-white p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-zinc-400">
+        {label}
+      </p>
+      <p className="mt-2 break-words text-sm font-bold text-zinc-900">
+        {value || "No disponible"}
+      </p>
+    </div>
+  );
+}
+
+function FileCard({
+  href,
+  title,
+  filename,
+  type,
+}: {
+  href?: string | null;
+  title: string;
+  filename?: string | null;
+  type: "pdf" | "video";
+}) {
+  if (!href) return null;
+
+  const isPdf = type === "pdf";
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="group flex items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-white p-4 transition hover:border-[#2e5090] hover:shadow-sm"
+    >
+      <div className="flex min-w-0 items-center gap-4">
+        <div
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl ${isPdf ? "bg-red-50" : "bg-[#2e5090]/10 text-[#2e5090]"
+            }`}
+        >
+          {isPdf ? "📄" : "▶"}
+        </div>
+
+        <div className="min-w-0">
+          <p className="font-black text-zinc-900">{title}</p>
+          <p className="truncate text-sm text-zinc-500">
+            {filename || "Ver archivo"}
+          </p>
+        </div>
+      </div>
+
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition group-hover:bg-[#2e5090] group-hover:text-white">
+        ↗
+      </span>
+    </a>
+  );
+}
+
 export default function DocenteDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [room, setRoom] = useState<Room | null>(null);
@@ -59,6 +132,8 @@ export default function DocenteDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"PENDING" | "REVIEWED">("PENDING");
   const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({});
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const fetchTeacherTeams = async (userId: string) => {
     try {
@@ -113,6 +188,16 @@ export default function DocenteDashboardPage() {
     loadSession();
   }, []);
 
+  const pendingTeams = useMemo(
+    () => teams.filter((team) => (team.evaluation?.status || "PENDING") === "PENDING"),
+    [teams]
+  );
+
+  const reviewedTeams = useMemo(
+    () => teams.filter((team) => team.evaluation?.status === "REVIEWED"),
+    [teams]
+  );
+
   const filteredTeams = useMemo(() => {
     return teams.filter((team) => {
       const status = team.evaluation?.status || "PENDING";
@@ -128,6 +213,9 @@ export default function DocenteDashboardPage() {
   };
 
   const handleEvaluate = async (teamId: string) => {
+    setSuccessMessage("");
+    setErrorMessage("");
+
     try {
       const response = await fetch("/api/docente/evaluar", {
         method: "PATCH",
@@ -143,14 +231,14 @@ export default function DocenteDashboardPage() {
       const result = await response.json();
 
       if (result.ok && user) {
-        alert("Evaluación guardada correctamente");
-        fetchTeacherTeams(user.id);
+        setSuccessMessage("Evaluación guardada correctamente.");
+        await fetchTeacherTeams(user.id);
       } else {
-        alert(result.message || "No se pudo guardar la evaluación");
+        setErrorMessage(result.message || "No se pudo guardar la evaluación.");
       }
     } catch (error) {
       console.error("Error al evaluar equipo:", error);
-      alert("Ocurrió un error al guardar la evaluación");
+      setErrorMessage("Ocurrió un error al guardar la evaluación.");
     }
   };
 
@@ -165,211 +253,246 @@ export default function DocenteDashboardPage() {
           : "Consulta y evalúa los equipos asignados."
       }
       navTitle="Docente"
-      navItems={[
-        { label: "Panel docente", href: "/dashboard/docente" },
-      ]}
+      navItems={[{ label: "Panel docente", href: "/dashboard/docente" }]}
     >
-      <section>
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => setActiveTab("PENDING")}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${activeTab === "PENDING"
-              ? "bg-zinc-900 text-white"
-              : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-              }`}
-          >
-            Pendientes
-          </button>
-
-          <button
-            onClick={() => setActiveTab("REVIEWED")}
-            className={`rounded-xl px-4 py-2 text-sm font-medium transition ${activeTab === "REVIEWED"
-              ? "bg-zinc-900 text-white"
-              : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-              }`}
-          >
-            Evaluados
-          </button>
-
-          {room && (
-            <span className="rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700">
-              {room.name}
-            </span>
+      <div className="space-y-8">
+        <div className="space-y-3">
+          {successMessage && (
+            <SimpleToast message={successMessage} type="success" />
           )}
+
+          {errorMessage && <SimpleToast message={errorMessage} type="error" />}
         </div>
 
-        {loading ? (
-          <p className="mt-6 text-zinc-600">Cargando equipos...</p>
-        ) : filteredTeams.length === 0 ? (
-          <p className="mt-6 text-zinc-600">
-            No hay equipos en esta vista.
-          </p>
-        ) : (
-          <div className="mt-6 space-y-5">
-            {filteredTeams.map((team) => (
-              <article
-                key={team.id}
-                className="rounded-2xl border border-zinc-200 p-5 shadow-sm"
+        <section className="grid gap-4 md:grid-cols-3">
+          <SectionCard className="border-l-4 border-l-[#2e5090]">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#2e5090]">
+              Sala asignada
+            </p>
+            <p className="mt-3 text-2xl font-black text-zinc-900">
+              {room?.name || "Sin sala"}
+            </p>
+          </SectionCard>
+
+          <SectionCard className="border-l-4 border-l-[#f88f03]">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#f88f03]">
+              Pendientes
+            </p>
+            <p className="mt-3 text-2xl font-black text-zinc-900">
+              {pendingTeams.length}
+            </p>
+          </SectionCard>
+
+          <SectionCard className="border-l-4 border-l-[#009e51]">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#009e51]">
+              Evaluados
+            </p>
+            <p className="mt-3 text-2xl font-black text-zinc-900">
+              {reviewedTeams.length}
+            </p>
+          </SectionCard>
+        </section>
+
+        <SectionCard>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#2e5090]">
+                Evaluación de equipos
+              </p>
+              <h2 className="mt-2 text-2xl font-black text-zinc-900">
+                Equipos asignados
+              </h2>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                onClick={() => setActiveTab("PENDING")}
+                className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${activeTab === "PENDING"
+                    ? "bg-[#f88f03] text-white"
+                    : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                  }`}
               >
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-zinc-500">
-                      Equipo
-                    </p>
-                    <p className="mt-1 font-semibold text-zinc-900">
-                      {team.teamName}
-                    </p>
-                  </div>
+                Pendientes ({pendingTeams.length})
+              </button>
 
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-zinc-500">
-                      Proyecto
-                    </p>
-                    <p className="mt-1 font-semibold text-zinc-900">
-                      {team.projectName}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-zinc-500">
-                      Categoría
-                    </p>
-                    <p className="mt-1 inline-block rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700">
-                      {team.category}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-zinc-500">
-                      Representante
-                    </p>
-                    <p className="mt-1 font-semibold text-zinc-900">
-                      {team.user.name}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-zinc-500">
-                      Correo
-                    </p>
-                    <p className="mt-1 text-zinc-700">{team.user.email}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-zinc-500">
-                      Integrantes
-                    </p>
-                    <p className="mt-1 text-zinc-700">{team.members}</p>
-                  </div>
-                </div>
-
-                <div className="mt-5">
-                  <p className="text-sm font-semibold text-zinc-900">
-                    Entregas del equipo
-                  </p>
-
-                  {team.submissions.length === 0 ? (
-                    <p className="mt-2 text-sm text-zinc-600">
-                      Este equipo aún no ha registrado entregas.
-                    </p>
-                  ) : (
-                    <div className="mt-3 space-y-3">
-                      {team.submissions.map((submission) => (
-                        <div
-                          key={submission.id}
-                          className="rounded-xl bg-zinc-50 p-4"
-                        >
-                          <p className="font-medium text-zinc-900">
-                            {submission.title}
-                          </p>
-
-                          {submission.description && (
-                            <p className="mt-2 text-sm text-zinc-600">
-                              {submission.description}
-                            </p>
-                          )}
-
-                          <div className="mt-3 flex flex-wrap items-center gap-4">
-                            <div className="mt-3 flex flex-wrap items-center gap-3">
-                              {submission.pdfUrl && (
-                                <a
-                                  href={submission.pdfUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-                                >
-                                  Ver PDF
-                                </a>
-                              )}
-
-                              {submission.videoUrl && (
-                                <a
-                                  href={submission.videoUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="rounded-xl border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100"
-                                >
-                                  Ver video
-                                </a>
-                              )}
-
-                              {!submission.pdfUrl && !submission.videoUrl && submission.publicLink && (
-                                <a
-                                  href={submission.publicLink}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
-                                >
-                                  Ver entrega
-                                </a>
-                              )}
-                            </div>
-
-                            <div className="mt-3 space-y-1 text-sm text-zinc-500">
-                              {submission.pdfFilename && <p>PDF: {submission.pdfFilename}</p>}
-                              {submission.videoFilename && <p>Video: {submission.videoFilename}</p>}
-                            </div>
-
-                            <p className="text-sm text-zinc-500">
-                              Registrada el{" "}
-                              {new Date(submission.createdAt).toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-5">
-                  <label className="mb-2 block text-sm font-medium text-zinc-800">
-                    Comentarios de evaluación
-                  </label>
-
-                  <textarea
-                    rows={4}
-                    value={commentDrafts[team.id] || ""}
-                    onChange={(event) =>
-                      handleCommentChange(team.id, event.target.value)
-                    }
-                    className="w-full rounded-xl border border-zinc-300 px-4 py-3 text-zinc-900 outline-none focus:border-black focus:ring-2 focus:ring-black/20"
-                    placeholder="Escribe aquí la retroalimentación del equipo"
-                  />
-
-                  {activeTab === "PENDING" && (
-                    <button
-                      onClick={() => handleEvaluate(team.id)}
-                      className="mt-4 rounded-xl bg-zinc-900 px-5 py-3 text-white transition hover:opacity-90"
-                    >
-                      Guardar evaluación
-                    </button>
-                  )}
-                </div>
-              </article>
-            ))}
+              <button
+                onClick={() => setActiveTab("REVIEWED")}
+                className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${activeTab === "REVIEWED"
+                    ? "bg-[#009e51] text-white"
+                    : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                  }`}
+              >
+                Evaluados ({reviewedTeams.length})
+              </button>
+            </div>
           </div>
-        )}
-      </section>
+
+          {loading ? (
+            <div className="mt-6 rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center">
+              <p className="font-bold text-zinc-900">Cargando equipos...</p>
+            </div>
+          ) : filteredTeams.length === 0 ? (
+            <div className="mt-6 rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 p-8 text-center">
+              <p className="font-bold text-zinc-900">
+                No hay equipos en esta vista.
+              </p>
+              <p className="mt-2 text-sm text-zinc-500">
+                Cambia de pestaña o espera a que existan entregas asignadas.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 space-y-5">
+              {filteredTeams.map((team) => {
+                const categoryStyle = getOngCategoryStyle(team.category);
+                const status = team.evaluation?.status || "PENDING";
+
+                return (
+                  <article
+                    key={team.id}
+                    className="overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-50 shadow-sm"
+                  >
+                    <div
+                      className="h-2 w-full"
+                      style={{ backgroundColor: categoryStyle.color }}
+                    />
+
+                    <div className="space-y-6 p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-zinc-400">
+                            Equipo
+                          </p>
+                          <h3 className="mt-2 text-2xl font-black text-zinc-900">
+                            {team.teamName}
+                          </h3>
+                          <p className="mt-2 text-sm text-zinc-600">
+                            {team.projectName}
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-sm font-semibold ${categoryStyle.bg} ${categoryStyle.border} ${categoryStyle.text}`}
+                          >
+                            {categoryStyle.label}
+                          </span>
+
+                          <StatusBadge
+                            tone={status === "REVIEWED" ? "success" : "warning"}
+                          >
+                            {status === "REVIEWED" ? "Evaluado" : "Pendiente"}
+                          </StatusBadge>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                        <MiniInfo label="Representante" value={team.user.name} />
+                        <MiniInfo label="Correo" value={team.user.email} />
+                        <MiniInfo label="Integrantes" value={team.members} />
+                      </div>
+
+                      <div className="rounded-3xl border border-zinc-200 bg-white p-5">
+                        <p className="text-sm font-black text-zinc-900">
+                          Entregas del equipo
+                        </p>
+
+                        {team.submissions.length === 0 ? (
+                          <p className="mt-3 text-sm text-zinc-600">
+                            Este equipo aún no ha registrado entregas.
+                          </p>
+                        ) : (
+                          <div className="mt-4 space-y-4">
+                            {team.submissions.map((submission) => (
+                              <div
+                                key={submission.id}
+                                className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4"
+                              >
+                                <div className="flex flex-wrap items-start justify-between gap-4">
+                                  <div>
+                                    <p className="font-black text-zinc-900">
+                                      {submission.title}
+                                    </p>
+
+                                    {submission.description && (
+                                      <p className="mt-2 text-sm leading-6 text-zinc-600">
+                                        {submission.description}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <p className="text-xs font-semibold text-zinc-400">
+                                    {new Date(
+                                      submission.createdAt
+                                    ).toLocaleString()}
+                                  </p>
+                                </div>
+
+                                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                                  <FileCard
+                                    type="pdf"
+                                    title="Documento PDF"
+                                    href={submission.pdfUrl}
+                                    filename={submission.pdfFilename}
+                                  />
+
+                                  <FileCard
+                                    type="video"
+                                    title="Video de presentación"
+                                    href={submission.videoUrl}
+                                    filename={submission.videoFilename}
+                                  />
+
+                                  {!submission.pdfUrl &&
+                                    !submission.videoUrl &&
+                                    submission.publicLink && (
+                                      <a
+                                        href={submission.publicLink}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="rounded-2xl bg-[#2e5090] px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+                                      >
+                                        Ver entrega
+                                      </a>
+                                    )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rounded-3xl border border-zinc-200 bg-white p-5">
+                        <FormField label="Comentarios de evaluación">
+                          <textarea
+                            rows={4}
+                            value={commentDrafts[team.id] || ""}
+                            onChange={(event) =>
+                              handleCommentChange(team.id, event.target.value)
+                            }
+                            className={inputClassName}
+                            placeholder="Escribe aquí la retroalimentación del equipo"
+                          />
+                        </FormField>
+
+                        {activeTab === "PENDING" && (
+                          <div className="mt-4">
+                            <PrimaryButton
+                              type="button"
+                              onClick={() => handleEvaluate(team.id)}
+                            >
+                              Guardar evaluación
+                            </PrimaryButton>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </SectionCard>
+      </div>
     </DashboardLayout>
   );
 }

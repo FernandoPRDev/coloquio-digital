@@ -4,6 +4,27 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
+    const settings = await prisma.eventSettings.findFirst();
+
+    if (!settings?.expositionEnabled) {
+        return NextResponse.json({
+            ok: true,
+            expositionOpen: false,
+            message: "La exposición no está activa.",
+            rooms: [],
+            settings,
+        });
+    }
+
+    if (settings?.expositionOpenAt && new Date() < settings.expositionOpenAt) {
+        return NextResponse.json({
+            ok: true,
+            expositionOpen: false,
+            message: "La exposición todavía no está disponible.",
+            rooms: [],
+            settings,
+        });
+    }
     try {
         const rooms = await prisma.room.findMany({
             orderBy: {
@@ -38,7 +59,9 @@ export async function GET() {
 
         return NextResponse.json({
             ok: true,
+            expositionOpen: true,
             rooms,
+            settings,
         });
     } catch (error: any) {
         return NextResponse.json(
