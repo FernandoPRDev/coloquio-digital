@@ -90,22 +90,27 @@ export default function DocenteDashboardPage() {
   };
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
+    const loadSession = async () => {
+      try {
+        const response = await fetch("/api/me");
+        const result = await response.json();
 
-    if (!storedUser) {
-      window.location.href = "/login";
-      return;
-    }
+        if (!result.ok || result.user.role !== "TEACHER") {
+          window.location.href = "/login";
+          return;
+        }
 
-    const parsedUser = JSON.parse(storedUser);
+        setUser(result.user);
+        await fetchTeacherTeams(result.user.id);
+      } catch (error) {
+        console.error("Error al cargar sesión docente:", error);
+        window.location.href = "/login";
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    if (parsedUser.role !== "TEACHER") {
-      window.location.href = "/login";
-      return;
-    }
-
-    setUser(parsedUser);
-    fetchTeacherTeams(parsedUser.id);
+    loadSession();
   }, []);
 
   const filteredTeams = useMemo(() => {

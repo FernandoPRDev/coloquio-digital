@@ -17,6 +17,11 @@ function sanitizeFilename(name: string) {
         .replace(/[^a-z0-9.\-_]/g, "");
 }
 
+const SUBMISSION_DEADLINE = new Date(
+    process.env.NEXT_PUBLIC_SUBMISSION_DEADLINE ||
+    "2026-05-20T23:59:00-06:00"
+);
+
 export async function POST(request: Request) {
     try {
         const formData = await request.formData();
@@ -37,6 +42,16 @@ export async function POST(request: Request) {
                 {
                     ok: false,
                     message: "Faltan campos obligatorios.",
+                },
+                { status: 400 }
+            );
+        }
+
+        if (new Date() > SUBMISSION_DEADLINE) {
+            return NextResponse.json(
+                {
+                    ok: false,
+                    message: "La fecha límite de entrega ya terminó.",
                 },
                 { status: 400 }
             );

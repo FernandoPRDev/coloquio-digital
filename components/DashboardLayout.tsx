@@ -26,7 +26,11 @@ export default function DashboardLayout({
   navItems,
   children,
 }: DashboardLayoutProps) {
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await fetch("/api/logout", {
+      method: "POST",
+    });
+
     localStorage.removeItem("user");
     window.location.href = "/login";
   };

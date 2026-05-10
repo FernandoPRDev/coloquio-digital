@@ -31,8 +31,6 @@ export default function LoginPage() {
       const result = await response.json();
 
       if (result.ok) {
-        localStorage.removeItem("user");
-        localStorage.setItem("user", JSON.stringify(result.user));
 
         if (result.user.role === "TEAM") {
           router.push("/dashboard/equipo");

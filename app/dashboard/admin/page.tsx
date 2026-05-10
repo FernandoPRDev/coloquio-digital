@@ -141,27 +141,32 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
+    const loadSession = async () => {
+      try {
+        const response = await fetch("/api/me");
+        const result = await response.json();
 
-    if (!storedUser) {
-      window.location.href = "/login";
-      return;
-    }
+        if (!result.ok || result.user.role !== "ADMIN") {
+          window.location.href = "/login";
+          return;
+        }
 
-    const parsedUser = JSON.parse(storedUser);
+        setUser(result.user);
 
-    if (parsedUser.role !== "ADMIN") {
-      window.location.href = "/login";
-      return;
-    }
+        await Promise.all([
+          fetchPendingUsers(),
+          fetchAllSubmissions(),
+          fetchRooms(),
+        ]);
+      } catch (error) {
+        console.error("Error al cargar sesión admin:", error);
+        window.location.href = "/login";
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    setUser(parsedUser);
-
-    Promise.all([
-      fetchPendingUsers(),
-      fetchAllSubmissions(),
-      fetchRooms(),
-    ]).finally(() => setLoading(false));
+    loadSession();
   }, []);
 
   const handleLogout = () => {

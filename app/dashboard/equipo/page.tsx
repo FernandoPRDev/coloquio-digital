@@ -44,6 +44,11 @@ type Team = {
   evaluation?: Evaluation | null;
 };
 
+const SUBMISSION_DEADLINE = new Date(
+  process.env.NEXT_PUBLIC_SUBMISSION_DEADLINE ||
+  "2026-05-20T23:59:00-06:00"
+);
+
 export default function EquipoDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
@@ -57,6 +62,7 @@ export default function EquipoDashboardPage() {
   const [uploadSuccess, setUploadSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const isSubmissionDeadlinePassed = new Date() > SUBMISSION_DEADLINE;
 
   const fetchTeamData = async (userId: string) => {
     try {
@@ -94,22 +100,27 @@ export default function EquipoDashboardPage() {
   };
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("user");
+    const loadSession = async () => {
+      try {
+        const response = await fetch("/api/me");
+        const result = await response.json();
 
-    if (!storedUser) {
-      window.location.href = "/login";
-      return;
-    }
+        if (!result.ok || result.user.role !== "TEAM") {
+          window.location.href = "/login";
+          return;
+        }
 
-    const parsedUser: User = JSON.parse(storedUser);
+        setUser(result.user);
+        await fetchTeamData(result.user.id);
+      } catch (error) {
+        console.error("Error al cargar sesión equipo:", error);
+        window.location.href = "/login";
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    if (parsedUser.role !== "TEAM") {
-      window.location.href = "/login";
-      return;
-    }
-
-    setUser(parsedUser);
-    fetchTeamData(parsedUser.id);
+    loadSession();
   }, []);
 
   const handleSubmitSubmission = async (event: FormEvent<HTMLFormElement>) => {
@@ -286,7 +297,25 @@ export default function EquipoDashboardPage() {
             </div>
           </section>
 
-          {team.evaluation?.status !== "REVIEWED" ? (
+          <section>
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-5">
+              <h2 className="text-lg font-semibold text-zinc-900">
+                Fecha límite de entrega
+              </h2>
+
+              <p className="mt-2 text-sm text-zinc-600">
+                Puedes registrar o actualizar tu entrega hasta el{" "}
+                <span className="font-semibold text-zinc-900">
+                  {SUBMISSION_DEADLINE.toLocaleString()}
+                </span>
+                . Una vez evaluada tu entrega o pasada esta fecha, ya no será posible
+                modificarla.
+              </p>
+            </div>
+          </section>
+
+          {team.evaluation?.status !== "REVIEWED" && !isSubmissionDeadlinePassed ? (
+
             <section>
               <h2 className="text-xl font-semibold text-zinc-900">
                 Registrar entrega
@@ -423,12 +452,12 @@ export default function EquipoDashboardPage() {
                 Entrega bloqueada
               </h2>
 
-              <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-5">
-                <p className="font-medium text-green-800">
-                  Tu entrega ya fue evaluada.
+              <div className="mt-4 rounded-2xl border border-orange-200 bg-orange-50 p-5">
+                <p className="font-medium text-orange-800">
+                  Ya no es posible modificar la entrega.
                 </p>
-                <p className="mt-2 text-sm text-green-700">
-                  Ya no es posible registrar una nueva entrega o modificar la actual.
+                <p className="mt-2 text-sm text-orange-700">
+                  La entrega fue evaluada o la fecha límite de carga ya terminó.
                 </p>
               </div>
             </section>
