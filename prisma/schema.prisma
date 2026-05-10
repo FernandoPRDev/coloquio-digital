@@ -35,7 +35,8 @@ model Team {
   submissions Submission[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
-
+  publicComments PublicComment[]
+  
   evaluation  Evaluation?
 }
 
@@ -72,6 +73,15 @@ model Evaluation {
 
   teamId    String           @unique
   team      Team             @relation(fields: [teamId], references: [id])
+}
+
+model PublicComment {
+  id        String   @id @default(cuid())
+  name      String
+  comment   String
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id])
+  createdAt DateTime @default(now())
 }
 
 enum Role {
