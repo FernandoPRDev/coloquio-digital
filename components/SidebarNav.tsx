@@ -15,10 +15,11 @@ type SidebarNavProps = {
 
 export default function SidebarNav({ title, items }: SidebarNavProps) {
   return (
-    <aside className="w-full overflow-hidden rounded-[28px] bg-zinc-950 text-white shadow-xl lg:sticky lg:top-6 lg:w-72 lg:self-start">
+    <aside className="w-full overflow-hidden rounded-[28px] bg-[#2e5090] text-white shadow-xl lg:sticky lg:top-6 lg:w-72 lg:self-start">
       <div className="relative border-b border-white/10 p-6">
-        <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-[#2e5090]/50" />
-        <div className="absolute -bottom-12 -left-12 h-28 w-28 rounded-full bg-[#f88f03]/40" />
+        <div className="absolute -right-10 -top-10 h-28 w-28 rounded-full bg-white/15" />
+        <div className="absolute -bottom-12 -left-12 h-28 w-28 rounded-full bg-[#f88f03]/60" />
+        <div className="absolute bottom-16 right-8 h-20 w-20 rounded-full bg-[#009e51]/40" />
 
         <div className="relative z-10">
           <Image

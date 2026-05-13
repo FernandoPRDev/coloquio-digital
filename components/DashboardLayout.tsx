@@ -128,13 +128,6 @@ export default function DashboardLayout({
                       )}
                     </div>
                   )}
-
-                  <button
-                    onClick={handleLogout}
-                    className="rounded-xl border border-zinc-300 bg-white px-4 py-2 text-sm font-semibold text-zinc-900 transition hover:bg-zinc-100"
-                  >
-                    Cerrar sesión
-                  </button>
                 </div>
               </div>
             </header>

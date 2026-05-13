@@ -151,7 +151,7 @@ export default function Home() {
           </section>
 
           <section className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
-            <SectionCard className="bg-zinc-950 text-white">
+            <SectionCard className="bg-gradient-to-br from-[#2e5090] to-[#009e51] text-white">
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-white/50">
                 Plataforma integral
               </p>

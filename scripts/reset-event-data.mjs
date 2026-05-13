@@ -38,7 +38,7 @@ async function main() {
 
     await prisma.room.deleteMany();
 
-    for (let i = 1; i <= 10; i++) {
+    for (let i = 1; i <= 11; i++) {
         await prisma.room.create({
             data: {
                 name: `Sala ${i}`,
