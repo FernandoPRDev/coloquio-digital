@@ -278,6 +278,19 @@ export default function ExpositionDetailPage() {
                     </section>
                 )}
 
+                {submission?.presentationPdfUrl && (
+                    <section className="rounded-[32px] bg-white p-6 shadow-sm lg:p-8">
+                        <h2 className="text-2xl font-black text-zinc-900">
+                            Presentación PDF
+                        </h2>
+
+                        <iframe
+                            src={submission.presentationPdfUrl}
+                            className="mt-5 h-[800px] w-full rounded-2xl border border-zinc-200"
+                        />
+                    </section>
+                )}
+
                 {submission?.pdfUrl && (
                     <section className="rounded-[32px] bg-white p-6 shadow-sm lg:p-8">
                         <h2 className="text-2xl font-black text-zinc-900">
