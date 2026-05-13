@@ -172,6 +172,11 @@ export default function ExpositionDetailPage() {
                                         Video: {submission.videoFilename}
                                     </p>
                                 )}
+                                {submission?.presentationPdfFilename && (
+                                    <p className="break-words">
+                                        Presentación: {submission.presentationPdfFilename}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -194,6 +199,32 @@ export default function ExpositionDetailPage() {
                                     <p className="font-black text-zinc-900">Documento PDF</p>
                                     <p className="truncate text-sm text-zinc-500">
                                         {submission.pdfFilename || "Ver PDF"}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition group-hover:bg-[#2e5090] group-hover:text-white">
+                                ↗
+                            </span>
+                        </a>
+                    )}
+
+                    {submission?.presentationPdfUrl && (
+                        <a
+                            href={submission.presentationPdfUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="group flex items-center justify-between gap-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:border-[#2e5090] hover:shadow-md"
+                        >
+                            <div className="flex min-w-0 items-center gap-4">
+                                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-50 text-2xl">
+                                    📄
+                                </div>
+
+                                <div className="min-w-0">
+                                    <p className="font-black text-zinc-900">Presentación PDF</p>
+                                    <p className="truncate text-sm text-zinc-500">
+                                        {submission.presentationPdfFilename || "Ver PDF"}
                                     </p>
                                 </div>
                             </div>

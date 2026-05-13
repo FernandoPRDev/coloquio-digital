@@ -17,10 +17,16 @@ type Submission = {
   title: string;
   description?: string;
   publicLink?: string | null;
+
   pdfUrl?: string | null;
-  videoUrl?: string | null;
   pdfFilename?: string | null;
+
+  presentationPdfUrl?: string | null;
+  presentationPdfFilename?: string | null;
+
+  videoUrl?: string | null;
   videoFilename?: string | null;
+
   createdAt: string;
 };
 
@@ -308,8 +314,8 @@ export default function DocenteDashboardPage() {
               <button
                 onClick={() => setActiveTab("PENDING")}
                 className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${activeTab === "PENDING"
-                    ? "bg-[#f88f03] text-white"
-                    : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                  ? "bg-[#f88f03] text-white"
+                  : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
                   }`}
               >
                 Pendientes ({pendingTeams.length})
@@ -318,8 +324,8 @@ export default function DocenteDashboardPage() {
               <button
                 onClick={() => setActiveTab("REVIEWED")}
                 className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${activeTab === "REVIEWED"
-                    ? "bg-[#009e51] text-white"
-                    : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                  ? "bg-[#009e51] text-white"
+                  : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
                   }`}
               >
                 Evaluados ({reviewedTeams.length})
@@ -433,6 +439,13 @@ export default function DocenteDashboardPage() {
                                     title="Documento PDF"
                                     href={submission.pdfUrl}
                                     filename={submission.pdfFilename}
+                                  />
+
+                                  <FileCard
+                                    type="pdf"
+                                    title="Presentación PDF"
+                                    href={submission.presentationPdfUrl}
+                                    filename={submission.presentationPdfFilename}
                                   />
 
                                   <FileCard

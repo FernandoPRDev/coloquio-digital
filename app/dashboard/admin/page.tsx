@@ -63,8 +63,10 @@ type Submission = {
   description?: string;
   publicLink?: string | null;
   pdfUrl?: string | null;
+  presentationPdfUrl?: string | null;
   videoUrl?: string | null;
   pdfFilename?: string | null;
+  presentationPdfFilename?: string | null;
   videoFilename?: string | null;
   createdAt: string;
   team: {
@@ -901,6 +903,13 @@ export default function AdminDashboardPage() {
                           title="Documento PDF"
                           href={submission.pdfUrl}
                           filename={submission.pdfFilename}
+                        />
+
+                        <FileCard
+                          type="pdf"
+                          title="Presentación PDF"
+                          href={submission.presentationPdfUrl}
+                          filename={submission.presentationPdfFilename}
                         />
 
                         <FileCard

@@ -20,6 +20,8 @@ type Submission = {
     description?: string | null;
     pdfUrl?: string | null;
     videoUrl?: string | null;
+    presentationPdfUrl?: string | null;
+    presentationPdfFilename?: string | null;
     pdfFilename?: string | null;
     videoFilename?: string | null;
     createdAt: string;
@@ -309,6 +311,11 @@ export default function ExposicionPage() {
                                                                                 {submission.videoUrl && (
                                                                                     <span className="rounded-full bg-white px-3 py-1">
                                                                                         Video disponible
+                                                                                    </span>
+                                                                                )}
+                                                                                {submission?.presentationPdfUrl && (
+                                                                                    <span className="rounded-full bg-white px-3 py-1">
+                                                                                        Presentación disponible
                                                                                     </span>
                                                                                 )}
 

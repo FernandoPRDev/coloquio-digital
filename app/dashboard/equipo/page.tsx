@@ -1,9 +1,18 @@
 "use client";
 
+"use client";
+
 import { FormEvent, useEffect, useState } from "react";
+import { upload } from "@vercel/blob/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import SimpleToast from "@/components/SimpleToast";
-import { FormField, inputClassName, PrimaryButton, SectionCard, StatusBadge } from "@/components/ui";
+import {
+  FormField,
+  inputClassName,
+  PrimaryButton,
+  SectionCard,
+  StatusBadge,
+} from "@/components/ui";
 import { getOngCategoryStyle } from "@/lib/ongCategories";
 
 type User = {
@@ -19,10 +28,16 @@ type Submission = {
   title: string;
   description?: string;
   publicLink?: string | null;
+
   pdfUrl?: string | null;
-  videoUrl?: string | null;
   pdfFilename?: string | null;
+
+  presentationPdfUrl?: string | null;
+  presentationPdfFilename?: string | null;
+
+  videoUrl?: string | null;
   videoFilename?: string | null;
+
   createdAt: string;
 };
 
@@ -46,6 +61,53 @@ type Team = {
   submissions: Submission[];
   evaluation?: Evaluation | null;
 };
+
+function FileCard({
+  href,
+  title,
+  filename,
+  type,
+}: {
+  href?: string | null;
+  title: string;
+  filename?: string | null;
+  type: "pdf" | "video";
+}) {
+  if (!href) return null;
+
+  const isPdf = type === "pdf";
+
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="group flex items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 transition hover:border-[#2e5090] hover:bg-white hover:shadow-sm"
+    >
+      <div className="flex min-w-0 items-center gap-4">
+        <div
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl ${isPdf
+              ? "bg-red-50 text-red-600"
+              : "bg-[#2e5090]/10 text-[#2e5090]"
+            }`}
+        >
+          {isPdf ? "📄" : "▶"}
+        </div>
+
+        <div className="min-w-0">
+          <p className="font-black text-zinc-900">{title}</p>
+          <p className="truncate text-sm text-zinc-500">
+            {filename || "Ver archivo"}
+          </p>
+        </div>
+      </div>
+
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-zinc-400 transition group-hover:bg-[#2e5090] group-hover:text-white">
+        ↗
+      </span>
+    </a>
+  );
+}
 
 function InfoCard({
   label,
@@ -80,56 +142,6 @@ function InfoCard({
     </div>
   );
 }
-
-function FileCard({
-  href,
-  title,
-  filename,
-  type,
-}: {
-  href?: string | null;
-  title: string;
-  filename?: string | null;
-  type: "pdf" | "video";
-}) {
-  if (!href) return null;
-
-  const isPdf = type === "pdf";
-
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      className="group flex items-center justify-between gap-4 rounded-3xl border border-zinc-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-[#2e5090] hover:shadow-md"
-    >
-      <div className="flex min-w-0 items-center gap-4">
-        <div
-          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl text-2xl ${isPdf
-            ? "bg-red-50 text-red-600"
-            : "bg-[#2e5090]/10 text-[#2e5090]"
-            }`}
-        >
-          {isPdf ? "📄" : "▶"}
-        </div>
-
-        <div className="min-w-0">
-          <p className="font-black text-zinc-900">{title}</p>
-          <p className="mt-1 truncate text-sm text-zinc-500">
-            {filename || "Ver archivo"}
-          </p>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
-            {isPdf ? "Documento" : "Video"}
-          </p>
-        </div>
-      </div>
-
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition group-hover:bg-[#2e5090] group-hover:text-white">
-        ↗
-      </span>
-    </a>
-  );
-}
 export default function EquipoDashboardPage() {
   const [user, setUser] = useState<User | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
@@ -142,6 +154,9 @@ export default function EquipoDashboardPage() {
   const [uploadError, setUploadError] = useState("");
   const [uploadSuccess, setUploadSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [presentationPdfFile, setPresentationPdfFile] = useState<File | null>(null);
+  const [uploadProgressText, setUploadProgressText] = useState("");
 
   const [submissionDeadline, setSubmissionDeadline] = useState<string | null>(null);
   const isSubmissionDeadlinePassed = submissionDeadline
@@ -180,11 +195,13 @@ export default function EquipoDashboardPage() {
           setTitle(latestSubmission.title || "");
           setDescription(latestSubmission.description || "");
           setPdfFile(null);
+          setPresentationPdfFile(null);
           setVideoFile(null);
         } else {
           setTitle("");
           setDescription("");
           setPdfFile(null);
+          setPresentationPdfFile(null);
           setVideoFile(null);
         }
       }
@@ -220,6 +237,29 @@ export default function EquipoDashboardPage() {
     loadSession();
   }, []);
 
+  const uploadFileToBlob = async (
+    file: File,
+    fileType: "pdf" | "presentationPdf" | "video",
+    teamId: string
+  ) => {
+    const safeFileName = file.name
+      .toLowerCase()
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9.\-_]/g, "");
+
+    const blob = await upload(
+      `submissions/${teamId}/${fileType}-${Date.now()}-${safeFileName}`,
+      file,
+      {
+        access: "public",
+        handleUploadUrl: "/api/blob/upload",
+        clientPayload: JSON.stringify({ fileType }),
+      }
+    );
+
+    return blob;
+  };
+
   const handleSubmitSubmission = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -227,31 +267,67 @@ export default function EquipoDashboardPage() {
 
     setUploadError("");
     setUploadSuccess("");
+    setUploadProgressText("");
     setIsSubmitting(true);
 
-    if (!pdfFile && !videoFile && team.submissions.length === 0) {
-      setUploadError("Debes seleccionar un PDF y un video.");
-      setIsSubmitting(false);
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("title", title);
-    formData.append("description", description);
-    formData.append("teamId", team.id);
-
-    if (pdfFile) {
-      formData.append("pdfFile", pdfFile);
-    }
-
-    if (videoFile) {
-      formData.append("videoFile", videoFile);
-    }
-
     try {
-      const response = await fetch("/api/submissions/upload", {
+      const existingSubmission = team.submissions[0];
+
+      if (
+        !existingSubmission &&
+        (!pdfFile || !presentationPdfFile || !videoFile)
+      ) {
+        setUploadError(
+          "Debes seleccionar el PDF principal, el PDF de presentación y el video."
+        );
+        setIsSubmitting(false);
+        return;
+      }
+
+      let pdfBlob: { url: string } | null = null;
+      let presentationPdfBlob: { url: string } | null = null;
+      let videoBlob: { url: string } | null = null;
+
+      if (pdfFile) {
+        setUploadProgressText("Subiendo PDF principal...");
+        pdfBlob = await uploadFileToBlob(pdfFile, "pdf", team.id);
+      }
+
+      if (presentationPdfFile) {
+        setUploadProgressText("Subiendo PDF de presentación...");
+        presentationPdfBlob = await uploadFileToBlob(
+          presentationPdfFile,
+          "presentationPdf",
+          team.id
+        );
+      }
+
+      if (videoFile) {
+        setUploadProgressText("Subiendo video...");
+        videoBlob = await uploadFileToBlob(videoFile, "video", team.id);
+      }
+
+      setUploadProgressText("Guardando entrega...");
+
+      const response = await fetch("/api/submissions/save", {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+          description,
+          teamId: team.id,
+
+          pdfUrl: pdfBlob?.url,
+          pdfFilename: pdfFile?.name,
+
+          presentationPdfUrl: presentationPdfBlob?.url,
+          presentationPdfFilename: presentationPdfFile?.name,
+
+          videoUrl: videoBlob?.url,
+          videoFilename: videoFile?.name,
+        }),
       });
 
       const result = await response.json();
@@ -259,14 +335,16 @@ export default function EquipoDashboardPage() {
       if (result.ok && user) {
         setUploadSuccess("Entrega guardada correctamente.");
         setPdfFile(null);
+        setPresentationPdfFile(null);
         setVideoFile(null);
+        setUploadProgressText("");
 
         await fetchTeamData(user.id);
       } else {
         setUploadError(result.message || "No se pudo guardar la entrega.");
       }
     } catch (error) {
-      console.error("Error al enviar entrega:", error);
+      console.error("Error al guardar entrega:", error);
       setUploadError("Ocurrió un error al guardar la entrega.");
     } finally {
       setIsSubmitting(false);
@@ -461,6 +539,10 @@ export default function EquipoDashboardPage() {
               </div>
 
               <div className="mt-6 space-y-3">
+                {uploadProgressText && (
+                  <SimpleToast message={uploadProgressText} type="success" />
+                )}
+
                 {uploadSuccess && (
                   <SimpleToast message={uploadSuccess} type="success" />
                 )}
@@ -535,6 +617,49 @@ export default function EquipoDashboardPage() {
                         className="mt-3 inline-flex text-sm font-semibold text-[#2e5090] underline underline-offset-4"
                       >
                         Ver PDF actual
+                      </a>
+                    )}
+                  </FormField>
+
+                  <FormField
+                    label="PDF de presentación"
+                    helpText="Formato permitido: PDF. Tamaño máximo: 50 MB."
+                  >
+                    <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 px-5 py-8 text-center transition hover:border-[#2e5090] hover:bg-[#2e5090]/5">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f88f03]/10 text-2xl text-[#f88f03]">
+                        📑
+                      </div>
+
+                      <p className="mt-4 text-sm font-bold text-zinc-900">
+                        {presentationPdfFile
+                          ? presentationPdfFile.name
+                          : "Selecciona el PDF de presentación"}
+                      </p>
+
+                      <p className="mt-1 text-xs text-zinc-500">
+                        Haz clic para cargar o reemplazar el archivo
+                      </p>
+
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0] || null;
+                          setPresentationPdfFile(file);
+                        }}
+                        required={!team.submissions[0]?.presentationPdfUrl}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {team.submissions[0]?.presentationPdfUrl && (
+                      <a
+                        href={team.submissions[0].presentationPdfUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-3 inline-flex text-sm font-semibold text-[#2e5090] underline underline-offset-4"
+                      >
+                        Ver PDF de presentación actual
                       </a>
                     )}
                   </FormField>
@@ -685,61 +810,28 @@ export default function EquipoDashboardPage() {
                       </div>
 
                       <div className="mt-5 grid gap-4 md:grid-cols-2">
-                        {submission.pdfUrl && (
-                          <a
+                        <div className="mt-5 grid gap-4 md:grid-cols-3">
+                          <FileCard
+                            type="pdf"
+                            title="PDF principal"
                             href={submission.pdfUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="group flex items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 transition hover:border-[#2e5090] hover:bg-white hover:shadow-sm"
-                          >
-                            <div className="flex min-w-0 items-center gap-4">
-                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-red-50 text-xl">
-                                📄
-                              </div>
+                            filename={submission.pdfFilename}
+                          />
 
-                              <div className="min-w-0">
-                                <p className="font-black text-zinc-900">
-                                  Documento PDF
-                                </p>
-                                <p className="truncate text-sm text-zinc-500">
-                                  {submission.pdfFilename || "Ver PDF"}
-                                </p>
-                              </div>
-                            </div>
+                          <FileCard
+                            type="pdf"
+                            title="PDF de presentación"
+                            href={submission.presentationPdfUrl}
+                            filename={submission.presentationPdfFilename}
+                          />
 
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-zinc-400 transition group-hover:bg-[#2e5090] group-hover:text-white">
-                              ↗
-                            </span>
-                          </a>
-                        )}
-
-                        {submission.videoUrl && (
-                          <a
+                          <FileCard
+                            type="video"
+                            title="Video de presentación"
                             href={submission.videoUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="group flex items-center justify-between gap-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-4 transition hover:border-[#2e5090] hover:bg-white hover:shadow-sm"
-                          >
-                            <div className="flex min-w-0 items-center gap-4">
-                              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#2e5090]/10 text-xl text-[#2e5090]">
-                                ▶
-                              </div>
-
-                              <div className="min-w-0">
-                                <p className="font-black text-zinc-900">
-                                  Video de presentación
-                                </p>
-                                <p className="truncate text-sm text-zinc-500">
-                                  {submission.videoFilename || "Ver video"}
-                                </p>
-                              </div>
-                            </div>
-
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-zinc-400 transition group-hover:bg-[#2e5090] group-hover:text-white">
-                              ↗
-                            </span>
-                          </a>
-                        )}
+                            filename={submission.videoFilename}
+                          />
+                        </div>
                       </div>
                     </div>
                   </article>

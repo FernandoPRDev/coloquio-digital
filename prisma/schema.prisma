@@ -46,8 +46,10 @@ model Submission {
   description   String?
   publicLink    String?
   pdfUrl        String?
+  presentationPdfUrl      String?
   videoUrl      String?
   pdfFilename   String?
+  presentationPdfFilename String?
   videoFilename String?
   teamId        String
   team          Team     @relation(fields: [teamId], references: [id])
