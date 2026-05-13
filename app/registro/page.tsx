@@ -83,9 +83,9 @@ export default function RegistroPage() {
     <PublicLayout>
       <section className="px-4 py-10 lg:px-6 lg:py-16">
         <div className="mx-auto grid max-w-6xl overflow-hidden rounded-[36px] bg-white shadow-xl lg:grid-cols-[0.85fr_1.15fr]">
-          <aside className="relative overflow-hidden bg-zinc-950 p-8 text-white lg:p-10">
-            <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-[#2e5090]/60" />
-            <div className="absolute bottom-20 right-20 h-36 w-36 rounded-full bg-[#009e51]/50" />
+          <aside className="relative overflow-hidden bg-gradient-to-br from-[#2e5090] to-[#009e51] p-8 text-white lg:p-10">
+            <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-white/15" />
+            <div className="absolute bottom-20 right-20 h-36 w-36 rounded-full bg-[#009e51]/60" />
             <div className="absolute -bottom-16 -left-16 h-52 w-52 rounded-full bg-[#f88f03]/50" />
 
             <div className="relative z-10 flex h-full flex-col justify-between gap-12">
