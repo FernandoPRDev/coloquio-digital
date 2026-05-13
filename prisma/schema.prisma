@@ -91,6 +91,8 @@ model EventSettings {
   submissionDeadline DateTime?
   expositionOpenAt   DateTime?
   expositionEnabled  Boolean  @default(true)
+  homeVideoUrl       String?
+  homeVideoEnabled   Boolean  @default(false)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }

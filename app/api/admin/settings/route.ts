@@ -11,8 +11,15 @@ async function getOrCreateSettings() {
     return prisma.eventSettings.create({
         data: {
             expositionEnabled: true,
+            homeVideoEnabled: false,
         },
     });
+}
+
+function parseMexicoDateTime(value?: string | null) {
+    if (!value) return null;
+
+    return new Date(`${value}:00-06:00`);
 }
 
 export async function GET() {
@@ -39,6 +46,14 @@ export async function PATCH(request: Request) {
     try {
         const body = await request.json();
 
+        const {
+            submissionDeadline,
+            expositionOpenAt,
+            expositionEnabled,
+            homeVideoUrl,
+            homeVideoEnabled,
+        } = body;
+
         const settings = await getOrCreateSettings();
 
         const updated = await prisma.eventSettings.update({
@@ -46,13 +61,12 @@ export async function PATCH(request: Request) {
                 id: settings.id,
             },
             data: {
-                submissionDeadline: body.submissionDeadline
-                    ? new Date(body.submissionDeadline)
-                    : null,
-                expositionOpenAt: body.expositionOpenAt
-                    ? new Date(body.expositionOpenAt)
-                    : null,
-                expositionEnabled: Boolean(body.expositionEnabled),
+                submissionDeadline: parseMexicoDateTime(submissionDeadline),
+                expositionOpenAt: parseMexicoDateTime(expositionOpenAt),
+                expositionEnabled: Boolean(expositionEnabled),
+
+                homeVideoUrl: homeVideoUrl || null,
+                homeVideoEnabled: Boolean(homeVideoEnabled),
             },
         });
 

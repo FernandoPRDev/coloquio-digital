@@ -4,7 +4,7 @@ import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { NextResponse } from "next/server";
 
 const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50 MB
-const MAX_VIDEO_SIZE = 600 * 1024 * 1024; // 600 MB
+const MAX_VIDEO_SIZE = 400 * 1024 * 1024; // 400 MB
 
 const ALLOWED_PDF_TYPES = ["application/pdf"];
 

@@ -2,11 +2,32 @@ import Link from "next/link";
 import PublicLayout from "@/components/PublicLayout";
 import { SectionCard, StatusBadge } from "@/components/ui";
 
-export default function Home() {
+export default async function Home() {
+  const response = await fetch("/api/settings-public");
+  const result = await response.json();
+  const settings = result.ok ? result.settings : null;
+
   return (
     <PublicLayout>
       <section className="px-4 py-10 lg:px-6 lg:py-14">
         <div className="mx-auto max-w-6xl space-y-10">
+          {settings?.homeVideoEnabled && settings?.homeVideoUrl && (
+            <section className="rounded-[32px] bg-white p-6 shadow-sm">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#2e5090]">
+                Presentación
+              </p>
+
+              <h2 className="mt-2 text-3xl font-black text-zinc-900">
+                Video de presentación del coloquio
+              </h2>
+
+              <video
+                controls
+                src={settings.homeVideoUrl}
+                className="mt-6 w-full rounded-3xl bg-black"
+              />
+            </section>
+          )}
           <section className="overflow-hidden rounded-[36px] bg-[#2e5090] p-8 text-white shadow-xl lg:p-12">
             <div className="grid gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
               <div>

@@ -671,7 +671,7 @@ export default function EquipoDashboardPage() {
 
                   <FormField
                     label="Video de presentación"
-                    helpText="Formatos permitidos: MP4, WEBM o MOV. Tamaño máximo: 600 MB."
+                    helpText="Formatos permitidos: MP4, WEBM o MOV. Tamaño máximo: 400 MB. De preferencia MP4 para mejor compatibilidad."
                   >
                     <label className="flex cursor-pointer flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-300 bg-zinc-50 px-5 py-8 text-center transition hover:border-[#2e5090] hover:bg-[#2e5090]/5">
                       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#2e5090]/10 text-2xl text-[#2e5090]">

@@ -198,6 +198,9 @@ export default function AdminDashboardPage() {
   const [expositionOpenAt, setExpositionOpenAt] = useState("");
   const [expositionEnabled, setExpositionEnabled] = useState(true);
 
+  const [homeVideoUrl, setHomeVideoUrl] = useState("");
+  const [homeVideoEnabled, setHomeVideoEnabled] = useState(false);
+
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -207,10 +210,18 @@ export default function AdminDashboardPage() {
     if (!value) return "";
 
     const date = new Date(value);
-    const offset = date.getTimezoneOffset();
-    const localDate = new Date(date.getTime() - offset * 60 * 1000);
 
-    return localDate.toISOString().slice(0, 16);
+    const formatter = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "America/Mexico_City",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+
+    return formatter.format(date).replace(" ", "T");
   };
 
   const fetchActiveUsers = async () => {
@@ -240,6 +251,8 @@ export default function AdminDashboardPage() {
           formatForDateTimeLocal(result.settings.expositionOpenAt)
         );
         setExpositionEnabled(result.settings.expositionEnabled);
+        setHomeVideoUrl(result.settings.homeVideoUrl || "");
+        setHomeVideoEnabled(result.settings.homeVideoEnabled || false);
       }
     } catch (error) {
       console.error("Error al cargar configuración:", error);
@@ -446,6 +459,8 @@ export default function AdminDashboardPage() {
           submissionDeadline,
           expositionOpenAt,
           expositionEnabled,
+          homeVideoUrl,
+          homeVideoEnabled,
         }),
       });
 
@@ -579,6 +594,42 @@ export default function AdminDashboardPage() {
             <StatusBadge tone={expositionEnabled ? "success" : "danger"}>
               {expositionEnabled ? "Exposición activa" : "Exposición inactiva"}
             </StatusBadge>
+
+            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+              <label className="mb-2 block text-sm font-bold text-zinc-900">
+                Video de presentación en inicio
+              </label>
+
+              <input
+                type="url"
+                value={homeVideoUrl}
+                onChange={(event) => setHomeVideoUrl(event.target.value)}
+                placeholder="https://..."
+                className={inputClassName}
+              />
+
+              <p className="mt-2 text-xs text-zinc-500">
+                Puedes pegar aquí la URL pública del video que se mostrará en la página de inicio.
+              </p>
+
+              <label className="mt-4 flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={homeVideoEnabled}
+                  onChange={(event) => setHomeVideoEnabled(event.target.checked)}
+                  className="mt-1 h-4 w-4"
+                />
+
+                <span>
+                  <span className="block text-sm font-semibold text-zinc-900">
+                    Mostrar video en inicio
+                  </span>
+                  <span className="block text-sm text-zinc-600">
+                    Si está activo, el video aparecerá en la página principal.
+                  </span>
+                </span>
+              </label>
+            </div>
           </div>
 
           <form className="mt-6 space-y-5" onSubmit={handleSaveSettings}>

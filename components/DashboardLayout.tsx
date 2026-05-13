@@ -83,6 +83,18 @@ export default function DashboardLayout({
           </header>
 
           <div className="p-6 lg:p-8">{children}</div>
+
+          <footer className="border-t border-zinc-200 bg-zinc-50 px-6 py-5 lg:px-8">
+            <div className="flex flex-col gap-2 text-xs text-zinc-500 md:flex-row md:items-center md:justify-between">
+              <p>
+                Movimiento en Marcha · Coloquio Digital
+              </p>
+
+              <p>
+                Plataforma de registro, evaluación y exposición de proyectos.
+              </p>
+            </div>
+          </footer>
         </section>
       </div>
     </main>
