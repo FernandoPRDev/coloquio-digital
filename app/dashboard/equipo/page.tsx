@@ -87,8 +87,8 @@ function FileCard({
       <div className="flex min-w-0 items-center gap-4">
         <div
           className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-xl ${isPdf
-              ? "bg-red-50 text-red-600"
-              : "bg-[#2e5090]/10 text-[#2e5090]"
+            ? "bg-red-50 text-red-600"
+            : "bg-[#2e5090]/10 text-[#2e5090]"
             }`}
         >
           {isPdf ? "📄" : "▶"}
@@ -809,8 +809,8 @@ export default function EquipoDashboardPage() {
                         </div>
                       </div>
 
-                      <div className="mt-5 grid gap-4 md:grid-cols-2">
-                        <div className="mt-5 grid gap-4 md:grid-cols-3">
+                      <div className="mt-5 grid gap-4 md:grid-cols-1">
+                        <div className="mt-5 grid gap-4 md:grid-cols-6">
                           <FileCard
                             type="pdf"
                             title="PDF principal"
