@@ -7,7 +7,13 @@ const MAX_PDF_SIZE = 50 * 1024 * 1024; // 50 MB
 const MAX_VIDEO_SIZE = 600 * 1024 * 1024; // 600 MB
 
 const ALLOWED_PDF_TYPES = ["application/pdf"];
-const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
+
+const ALLOWED_VIDEO_TYPES = [
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+    "application/octet-stream",
+];
 
 export async function POST(request: Request) {
     try {
@@ -16,23 +22,17 @@ export async function POST(request: Request) {
         const jsonResponse = await handleUpload({
             body,
             request,
-            onBeforeGenerateToken: async (pathname, clientPayload) => {
-                const payload = clientPayload
-                    ? JSON.parse(clientPayload)
-                    : null;
+            onBeforeGenerateToken: async (_pathname, clientPayload) => {
+                const payload = clientPayload ? JSON.parse(clientPayload) : null;
 
                 if (!payload?.fileType) {
                     throw new Error("Tipo de archivo no especificado.");
                 }
 
-                if (payload.fileType === "pdf") {
-                    return {
-                        allowedContentTypes: ALLOWED_PDF_TYPES,
-                        maximumSizeInBytes: MAX_PDF_SIZE,
-                    };
-                }
-
-                if (payload.fileType === "presentationPdf") {
+                if (
+                    payload.fileType === "pdf" ||
+                    payload.fileType === "presentationPdf"
+                ) {
                     return {
                         allowedContentTypes: ALLOWED_PDF_TYPES,
                         maximumSizeInBytes: MAX_PDF_SIZE,
@@ -48,14 +48,13 @@ export async function POST(request: Request) {
 
                 throw new Error("Tipo de archivo no permitido.");
             },
-            onUploadCompleted: async () => {
-                // Aquí no guardamos DB todavía.
-                // Solo autorizamos subida directa a Blob.
-            },
+            onUploadCompleted: async () => { },
         });
 
         return NextResponse.json(jsonResponse);
     } catch (error: any) {
+        console.error("Error en autorización Blob:", error);
+
         return NextResponse.json(
             {
                 ok: false,
