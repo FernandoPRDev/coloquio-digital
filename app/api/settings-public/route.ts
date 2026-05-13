@@ -1,3 +1,4 @@
+"use client";
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";

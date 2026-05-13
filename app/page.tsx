@@ -1,11 +1,34 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import PublicLayout from "@/components/PublicLayout";
 import { SectionCard, StatusBadge } from "@/components/ui";
 
-export default async function Home() {
-  const response = await fetch("/api/settings-public");
-  const result = await response.json();
-  const settings = result.ok ? result.settings : null;
+type PublicSettings = {
+  homeVideoUrl?: string | null;
+  homeVideoEnabled?: boolean;
+};
+
+export default function Home() {
+  const [settings, setSettings] = useState<PublicSettings | null>(null);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch("/api/settings-public");
+        const result = await response.json();
+
+        if (result.ok) {
+          setSettings(result.settings);
+        }
+      } catch (error) {
+        console.error("Error al cargar configuración pública:", error);
+      }
+    };
+
+    fetchSettings();
+  }, []);
 
   return (
     <PublicLayout>
