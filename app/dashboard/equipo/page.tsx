@@ -247,11 +247,17 @@ export default function EquipoDashboardPage() {
       .replace(/\s+/g, "-")
       .replace(/[^a-z0-9.\-_]/g, "");
 
+    const contentType =
+      fileType === "video"
+        ? file.type || "video/mp4"
+        : "application/pdf";
+
     const blob = await upload(
       `submissions/${teamId}/${fileType}-${Date.now()}-${safeFileName}`,
       file,
       {
         access: "public",
+        contentType,
         handleUploadUrl: "/api/blob/upload",
         clientPayload: JSON.stringify({ fileType }),
       }
@@ -810,7 +816,7 @@ export default function EquipoDashboardPage() {
                       </div>
 
                       <div className="mt-5 grid gap-4 md:grid-cols-1">
-                        <div className="mt-5 grid gap-4 md:grid-cols-6">
+                        <div className="mt-5 grid gap-4 md:grid-cols-12">
                           <FileCard
                             type="pdf"
                             title="PDF principal"
