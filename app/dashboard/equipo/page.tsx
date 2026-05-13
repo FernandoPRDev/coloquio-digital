@@ -816,7 +816,7 @@ export default function EquipoDashboardPage() {
                       </div>
 
                       <div className="mt-5 grid gap-4 md:grid-cols-1">
-                        <div className="mt-5 grid gap-4 md:grid-cols-12">
+                        <div className="mt-5 grid gap-4 md:grid-cols-1">
                           <FileCard
                             type="pdf"
                             title="PDF principal"
